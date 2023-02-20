@@ -133,3 +133,35 @@ by
     rw [Nat.sub_sub_self hcb] at h
     rw [hfc] at h
     exact h hgt
+
+-- S2 : If 0 ≤ a ≤ b and c = fl (b - a) then fl (b - c) = b - c exactly
+--      (and similarly if 0 ≥ a ≥ b)
+theorem s2 {a b : ℕ} (hab : a ≤ b)
+  (hfa : trunc a = a) (hfb : trunc b = b) :
+  trunc (b - round (b - a)) = b - round (b - a) := by
+  cases Nat.lt_or_ge (2 * a) b with
+  | inr hba => -- ge : 2 * a ≥ b
+    have hf : round (b - a) = b - a := by
+      rw [← Round.a0]
+      exact sterbenz hab hba hfb hfa
+    rw [hf, Nat.sub_sub_self hab]
+    exact hfa
+  | inl hab' => -- lt : 2 * a < b
+    apply sterbenz
+    . rw [Round.a0] at hfb
+      apply Nat.le_trans (m := round b)
+      . apply Round.round_le_round
+        exact Nat.sub_le _ _
+      . exact Nat.le_of_eq hfb
+    . apply Nat.le_trans (m := 2 * trunc (b - a))
+      . rw [← pow_one 2, ← Trunc.trunc_pow_mul, pow_one]
+        apply Nat.le_trans (m := trunc b)
+        . rw [hfb]
+        . apply Trunc.trunc_le_trunc
+          rw [Nat.mul_sub_left_distrib, Nat.two_mul,
+              Nat.add_sub_assoc (le_of_lt hab')]
+          exact Nat.le_add_right _ _
+      . apply Nat.mul_le_mul_left
+        exact Round.trunc_le_round _
+    . exact hfb
+    . exact Round.a0'' _

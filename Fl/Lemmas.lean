@@ -8,11 +8,6 @@ theorem two_pow_pos {m : ℕ} : 0 < 2 ^ m := Nat.pos_pow_of_pos m two_pos
 
 theorem two_pow_pos' (m : ℕ) : 0 < 2 ^ m := Nat.pos_pow_of_pos m two_pos
 
-theorem pow_sub_of_le {m n : ℕ} (h : n ≤ m) : 2 ^ (m - n) = 2 ^ m / 2 ^ n := by
-  have h1 := Nat.sub_add_cancel h ▸ (pow_add 2 (m - n) n)
-  have h2 := Nat.mul_div_cancel (2 ^ (m - n)) (two_pow_pos' n)
-  rw [h1, h2]
-
 theorem lt_of_pos_of_le_sub_one {m n : ℕ} (k : 0 < n) (h : m ≤ n - 1) : m < n :=
   Nat.sub_add_cancel k ▸ (Nat.add_le_add_right h 1)
 

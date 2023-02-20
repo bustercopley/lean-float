@@ -55,6 +55,13 @@ theorem ulp_le {a : ℕ} (h : 0 < a) : ulp a ≤ a := by
   . exact pow_le_pow one_le_two (Nat.sub_le_sub_left a.size n_pos)
   . exact Fl.Lemmas.le_size_of_pos h
 
+theorem ulp_le_trunc {a : ℕ} (h : 0 < a) : ulp a ≤ trunc a := by
+  unfold trunc sig ulp expt
+  apply Nat.le_mul_of_pos_left
+  rw [← Nat.succ_le, ← Nat.one_eq_succ_zero]
+  rw [Nat.one_le_div_iff Lemmas.two_pow_pos]
+  exact ulp_le h
+
 theorem sig_pos {a : ℕ} (h : 0 < a) : 0 < sig a := by
   change 1 ≤ sig a
   unfold sig
@@ -426,5 +433,51 @@ theorem two_dvd_trunc_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ∣ trunc a := by
   apply dvd_mul_of_dvd_right
   apply pow_dvd_pow
   exact one_le_expt_of_ge hle
+
+theorem ulp_mul_pow {x k : ℕ} (h : n ≤ x.size) :
+  ulp (x * 2 ^ k) = ulp x * 2 ^ k := by
+  unfold ulp expt
+  have pos : 0 < x := by
+    rw [← Nat.size_pos]
+    exact Nat.lt_of_lt_of_le n_pos h
+  rw [← pow_add, Lemmas.size_mul_pow pos, Nat.sub_add_comm h]
+
+theorem trunc_mul_pow {x k : ℕ} :
+  trunc (x * 2 ^ k) = trunc x * 2 ^ k := by
+  cases eq_or_ne x 0 with
+  | inl eq_zero =>
+    unfold trunc sig ulp expt
+    rw [eq_zero, zero_mul, Nat.size_zero, Nat.zero_sub,
+        pow_zero, mul_one, Nat.div_one, zero_mul]
+  | inr ne_zero =>
+    cases Nat.lt_or_ge n x.size with
+    | inr size_le =>
+      have lt : x < 2 ^ n := by
+        replace size_le := GE.ge.le size_le
+        rwa [← Nat.size_le]
+      rw [Trunc.trunc_eq_self_of_lt lt]
+      unfold trunc sig ulp expt
+      have pos : 0 < x := Nat.zero_lt_of_ne_zero ne_zero
+      rw [Lemmas.size_mul_pow pos]
+      rw [Nat.div_mul_cancel]
+      apply dvd_trans (b := 2 ^ k)
+      . rw [Nat.pow_dvd_pow_iff_le_right one_lt_two]
+        rw [Nat.add_comm]
+        apply Nat.le_trans (m := k + x.size - x.size)
+        . exact Nat.sub_le_sub_left _ size_le
+        . rw [Nat.add_sub_cancel k x.size]
+      . exact Nat.dvd_mul_left _ _
+    | inl lt_size =>
+      unfold trunc sig
+      rw [ulp_mul_pow (le_of_lt lt_size)]
+      rw [Nat.mul_comm (ulp x)]
+      rw [← Nat.div_div_eq_div_mul]
+      rw [Nat.mul_div_cancel _ Lemmas.two_pow_pos]
+      rw [Nat.mul_comm (2 ^ k)]
+      rw [Nat.mul_assoc]
+
+theorem trunc_pow_mul {x k : ℕ} :
+  trunc (2 ^ k * x) = 2 ^ k * trunc x := by
+  rw [mul_comm, trunc_mul_pow, mul_comm]
 
 end Fl.Trunc

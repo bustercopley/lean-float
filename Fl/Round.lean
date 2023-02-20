@@ -29,22 +29,29 @@ theorem a3' {x : ℕ} (h : next (trunc x) - x < x - trunc x) :
 
 theorem a0 (x : ℕ) : trunc x = x ↔ round x = x := by
   constructor
-  -- ⊢ trunc x = x → round x = x
-  . intro h
-    apply h ▸ a2'
+  . intro l
+    apply l ▸ a2'
     rw [Nat.sub_self]
     exact Nat.sub_pos_of_lt (Trunc.lt_next x)
-  -- ⊢ round x = x → trunc x = x
-  . intro h
+  . intro r
     cases a1 x with
-    | inl k => exact k ▸ h
-    | inr k =>
-      rw [h] at k
+    | inl lo => exact lo ▸ r
+    | inr hi =>
+      rw [r] at hi
       apply absurd
       . exact Trunc.lt_next_trunc x
-      . exact not_lt_iff_eq_or_lt.mpr (Or.inl k)
+      . exact Eq.not_lt hi
 
 theorem a0' {x : ℕ} (h : trunc x = x) : round x = trunc x := by rwa [h, ← a0]
+
+theorem round_idempotent (x : ℕ) : round (round x) = round x := by
+  cases a1 x with
+  | inl lo => rw [← a0, lo, Trunc.trunc_idempotent]
+  | inr hi => rw [← a0, hi, Trunc.trunc_next_comm, Trunc.trunc_idempotent]
+
+theorem a0'' (x : ℕ) : trunc (round x) = round (x) := by
+  rw [a0]
+  exact round_idempotent x
 
 theorem a2'' {x : ℕ} (h : x < trunc x + ulp x / 2) :
   round x = trunc x := by
@@ -102,19 +109,46 @@ theorem trunc_add_half_ulp_eq_of_lt_size {x : ℕ} (lt_size : 2 ^ n ≤ x) :
   rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc, Nat.mul_comm,
       Nat.div_mul_cancel ulp_even, ← Trunc.ulp_trunc_eq_ulp, next]
 
+theorem a2''' {x : ℕ} (hf : round x = trunc x) :
+  x ≤ trunc x + ulp x / 2 := by
+  cases Nat.lt_or_ge x (2 ^ n) with
+  | inl size_le =>
+    exact ge_of_eq (trunc_add_half_ulp_eq_of_size_le size_le)
+  | inr lt_size =>
+    refine Nat.le_of_mul_le_mul_left ?_ two_pos
+    rw [trunc_add_half_ulp_eq_of_lt_size lt_size]
+    have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
+    have h2 : trunc x ≤ x := Trunc.trunc_le _
+    rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h2, Nat.add_comm,
+        ← Nat.le_sub_iff_add_le h1]
+    exact a2 hf
+
+theorem a3''' {x : ℕ} (hf : round x = next (trunc x)) :
+  trunc x + ulp x / 2 ≤ x := by
+  cases Nat.lt_or_ge x (2 ^ n) with
+  | inl size_le =>
+    exact le_of_eq (trunc_add_half_ulp_eq_of_size_le size_le)
+  | inr lt_size =>
+    refine Nat.le_of_mul_le_mul_left ?_ two_pos
+    rw [trunc_add_half_ulp_eq_of_lt_size lt_size]
+    have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
+    have h2 : trunc x ≤ x := Trunc.trunc_le _
+    rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h1, Nat.add_comm,
+        ← Nat.le_sub_iff_add_le h2]
+    exact a3 hf
+
 theorem round_eq_trunc_add_half {x : ℕ} :
   x = trunc x + ulp x / 2 ∨ round x = trunc (x + ulp x / 2) := by
-  cases lt_or_ge n x.size with
-  | inr size_le => -- size_le : n ≥ x.size
+  cases Nat.lt_or_ge x (2 ^ n) with
+  | inl size_le => -- size_le : x < 2 ^ n
     apply Or.inl
-    unfold trunc sig ulp expt
-    rw [Nat.sub_eq_zero_of_le size_le, Nat.pow_zero, Nat.div_one, Nat.mul_one]
-    rw [Nat.div_eq_of_lt one_lt_two, Nat.add_zero]
-  | inl lt_size => -- lt_size : n < x.size
+    rw [trunc_add_half_ulp_eq_of_size_le size_le]
+  | inr lt_size => -- lt_size : n < x.size
     cases eq_or_ne x (trunc x + ulp x / 2) with
     | inl eq => exact Or.inl eq
     | inr ne => -- ne : x ≠ trunc x + ulp x / 2
       apply Or.inr
+      rw [ge_iff_le, ← Nat.lt_size] at lt_size
       have expt_pos : 0 < expt x := Nat.zero_lt_sub_of_lt lt_size
       have ulp_even : 2 ∣ ulp x := dvd_pow_self 2 (ne_zero_of_lt expt_pos)
       cases le_or_gt x (trunc x + ulp x / 2) with
@@ -154,5 +188,34 @@ theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
 
 theorem round_le_next_trunc (x : ℕ) : round x ≤ next (trunc x) :=
   Or.elim (a1 x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
+
+theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
+  have lolo : trunc a ≤ trunc b := Trunc.trunc_le_trunc hle
+  have lohi : trunc a ≤ next (trunc b) :=
+    Nat.le_trans lolo (Nat.le_add_right _ _)
+  have hihi : next (trunc a) ≤ next (trunc b) :=
+    Nat.add_le_add lolo (Trunc.ulp_le_ulp lolo)
+  rcases a1 a, (a1 b).symm with ⟨alo | ahi, bhi | blo⟩
+  . rwa [alo, bhi]
+  . rwa [alo, blo]
+  . rwa [ahi, bhi]
+  . cases eq_or_ne a b with
+    | inl eq => exact eq ▸ le_rfl
+    | inr ne =>
+      rw [ahi, blo]
+      apply Nat.le_of_not_lt
+      intro (lt_next_trunc : trunc b < next (trunc a))
+      have trunc_eq : trunc b = trunc a := by
+        apply Nat.le_antisymm
+        . rw [← Trunc.trunc_idempotent b]
+          exact Trunc.trunc_le_trunc_of_lt_next_trunc lt_next_trunc
+        . exact lolo
+      have ulp_eq : ulp b = ulp a := by
+        rw [← Trunc.ulp_trunc_eq_ulp a, ← Trunc.ulp_trunc_eq_ulp b, trunc_eq]
+      apply Nat.lt_le_antisymm (lt_of_le_of_ne hle ne)
+      apply Nat.le_trans (m := trunc b + ulp b / 2)
+      . exact a2''' blo
+      . rw [trunc_eq, ulp_eq]
+        exact a3''' ahi
 
 end Fl.Round
