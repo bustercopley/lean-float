@@ -218,4 +218,14 @@ theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
       . rw [trunc_eq, ulp_eq]
         exact a3''' ahi
 
+theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
+  cases Round.a1 a with
+  | inl hlo => exact hlo
+  | inr hhi =>
+    exfalso
+    apply Nat.lt_le_antisymm (Trunc.lt_next_trunc a)
+    apply Nat.le_trans (m := round a)
+    . exact ge_of_eq hhi
+    . exact h
+
 end Fl.Round

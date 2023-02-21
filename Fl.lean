@@ -95,8 +95,8 @@ theorem s1' {a b : ℕ}
     . apply Nat.sub_le_sub_left
       exact Trunc.ulp_pos _
 
--- S1 : If 0 ≤ a ≤ b and fl (b - a) = b - a exactly then fl (c - a) = c - a
---      exactly for all c ∈ [a, b] (and similarly if 0 ≥ a ≥ b)
+-- S1 : If 0 ≤ a ≤ c ≤ b and fl (b - a) = b - a exactly
+--      then fl (c - a) = c - a  exactly (and similarly if 0 ≥ a ≥ b)
 theorem s1 {a b c : ℕ} (hac : a ≤ c) (hcb : c ≤ b)
   (hfa : trunc a = a) (hfb : trunc b = b) (hfc : trunc c = c)
   (hf : trunc (b - a) = b - a) :
@@ -130,8 +130,7 @@ by
   | inl hle => exact sterbenz hac hle hfc hfa
   | inr hgt =>
     replace h := h (b - c)
-    rw [Nat.sub_sub_self hcb] at h
-    rw [hfc] at h
+    rw [Nat.sub_sub_self hcb, hfc] at h
     exact h hgt
 
 -- S2 : If 0 ≤ a ≤ b and c = fl (b - a) then fl (b - c) = b - c exactly
@@ -165,3 +164,61 @@ theorem s2 {a b : ℕ} (hab : a ≤ b)
         exact Round.trunc_le_round _
     . exact hfb
     . exact Round.a0'' _
+
+-- Inner part of the proof for property S3.
+-- Let b be a floating point number such that 0 ≤ a ≤ b and ulp b ≤ 2 * a.
+-- Let b' be the greatest floating point number not greater than b - a.
+-- Then b - b' ≤ 2 * a.
+theorem s3' {a b : ℕ} (hfb : trunc b = b) (h : ulp b ≤ 2 * a) :
+  b - trunc (b - a) ≤ 2 * a := by
+  cases Nat.lt_or_ge a (ulp b) with
+  | inl lt_ulp =>
+    apply Nat.le_trans (m := ulp b)
+    . rw [tsub_le_iff_tsub_le]
+      rw [← Trunc.trunc_sub_ulp_eq_of_trunc_eq hfb]
+      apply Trunc.trunc_le_trunc
+      exact Nat.sub_le_sub_left _ (Nat.le_of_lt lt_ulp)
+    . exact h
+  | inr ulp_le =>
+    apply Nat.le_trans (m := a + ulp b)
+    . apply Nat.le_add_of_sub_le
+      rw [Nat.sub_sub]
+      rw [tsub_le_iff_tsub_le]
+      apply Nat.le_trans (m := trunc (b - a) + ulp (b - a))
+      . rw [← Trunc.ulp_trunc_eq_ulp]
+        exact Nat.le_of_lt (Trunc.lt_next_trunc _)
+      . apply Nat.add_le_add_left
+        apply Trunc.ulp_le_ulp
+        exact Nat.sub_le _ _
+    . rw [Nat.two_mul]
+      apply Nat.add_le_add_left
+      exact ulp_le
+
+-- S3 : If 0 ≤ ulp (b) / 2 ≤ a ≤ b and c = fl (b - fl (b - a) satisfies c > a
+--      then fl (c - d) = c - d exactly for all d ∈ [a, c] (and similarly if
+--      0 ≥ -ulp (b) / 2 ≥ a ≥ b).
+theorem s3 {a b d : ℕ}
+  (hfa : trunc a = a) (hfb : trunc b = b) (hfd : trunc d = d)
+  (hba : ulp (b) ≤ 2 * a) (hab: a ≤ b)
+  (hac : a < round (b - round (b - a)))
+  (had : a ≤ d) (hdc : d ≤ round (b - round (b - a))) :
+  round (round (b - round (b - a)) - d) = round (b - round (b - a)) - d := by
+  have hfc : round (b - round (b - a)) = b - round (b - a) := by
+    rw [← Round.a0]
+    exact s2 hab hfa hfb
+  have helo : round (b - a) < b - a := by
+    rw [lt_tsub_comm, ← hfc]
+    exact hac
+  have hcd : round (b - round (b - a)) ≤ 2 * d := by
+    have hfe : round (b - a) = trunc (b - a) :=
+      Round.round_eq_trunc_of_le (Nat.le_of_lt helo)
+    apply Nat.le_trans (m := 2 * a)
+    . rw [hfc, hfe]
+      exact s3' hfb hba
+    . exact Nat.mul_le_mul_left 2 had
+  rw [← Round.a0]
+  apply sterbenz
+  . exact hdc
+  . exact hcd
+  . exact Round.a0'' (b - round (b - a))
+  . exact hfd

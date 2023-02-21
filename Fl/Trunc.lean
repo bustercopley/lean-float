@@ -3,6 +3,8 @@ import Mathlib.Data.Nat.Size
 import Mathlib.Data.Nat.Order.Lemmas
 import Mathlib.Algebra.Order.Monoid.WithTop
 
+import Mathlib.Tactic.LibrarySearch
+
 import Fl.Lemmas
 
 namespace Fl.Trunc
@@ -407,6 +409,20 @@ theorem trunc_pred_eq_trunc_of_trunc_ne_self {a : ℕ}
   . apply Nat.le_pred_of_lt
     exact Nat.lt_of_le_of_ne (trunc_le a) h
   . exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) (lt_next_trunc a)
+
+theorem trunc_trunc_sub_ulp_eq {a : ℕ} :
+  trunc (trunc a - ulp a) = trunc a - ulp a := by
+  apply trunc_eq_of_le_of_ulp_dvd
+  . exact Nat.sub_le _ _
+  . rw [ulp_trunc_eq_ulp]
+    apply Nat.dvd_sub'
+    . exact ulp_dvd_trunc _
+    . exact Nat.dvd_refl _
+
+theorem trunc_sub_ulp_eq_of_trunc_eq {a : ℕ} (h : trunc a = a) :
+  trunc (a - ulp a) = a - ulp a := by
+  rw [← h, ulp_trunc_eq_ulp]
+  exact trunc_trunc_sub_ulp_eq
 
 theorem one_le_expt_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 1 ≤ expt a := by
   rw [← Nat.add_sub_cancel 1 n]
