@@ -482,4 +482,16 @@ theorem trunc_pow_mul {x k : ℕ} :
   trunc (2 ^ k * x) = 2 ^ k * trunc x := by
   rw [mul_comm, trunc_mul_pow, mul_comm]
 
+theorem trunc_add_half_ulp_eq_of_size_le {x : ℕ} (size_le : x < 2 ^ n)
+  : trunc x + ulp x / 2 = x := by
+  unfold trunc sig
+  rw [Trunc.ulp_eq_one_of_lt size_le]
+  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_zero one_lt_two, Nat.add_zero]
+
+theorem trunc_add_half_ulp_eq_of_lt_size {x : ℕ} (lt_size : 2 ^ n ≤ x) :
+  2 * (trunc x + ulp x / 2) = trunc x + next (trunc x) := by
+  have ulp_even := Trunc.two_dvd_ulp_of_ge lt_size
+  rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc, Nat.mul_comm,
+      Nat.div_mul_cancel ulp_even, ← Trunc.ulp_trunc_eq_ulp, next]
+
 end Fl.Trunc

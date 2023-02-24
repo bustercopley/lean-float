@@ -15,7 +15,80 @@ end Defs
 open Defs
 open Fl.Trunc.Defs
 
+namespace Faithful
+
+-- Faithful axioms
+axiom a0 {x : ℕ} : trunc x = x → round x = x
 axiom a1 (x : ℕ) : round x = trunc x ∨ round x = next (trunc x)
+
+theorem trunc_eq_iff_round_eq (x : ℕ) : trunc x = x ↔ round x = x := by
+  constructor
+  . intro l
+    exact a0 l
+  . intro r
+    cases a1 x with
+    | inl lo => exact lo ▸ r
+    | inr hi =>
+      rw [r] at hi
+      apply absurd
+      . exact Trunc.lt_next_trunc x
+      . exact Eq.not_lt hi
+
+theorem round_eq_trunc_of_trunc_eq {x : ℕ} (h : trunc x = x) :
+  round x = trunc x :=
+  by rwa [h, ← trunc_eq_iff_round_eq]
+
+theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
+  Or.elim (a1 x) ge_of_eq (fun hi => hi.symm ▸ Nat.le_add_right _ _)
+
+theorem round_le_next_trunc (x : ℕ) : round x ≤ next (trunc x) :=
+  Or.elim (a1 x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
+
+theorem round_idempotent (x : ℕ) : round (round x) = round x := by
+  cases a1 x with
+  | inl lo => rw [← trunc_eq_iff_round_eq, lo, Trunc.trunc_idempotent]
+  | inr hi => rw [← trunc_eq_iff_round_eq, hi, Trunc.trunc_next_comm,
+                  Trunc.trunc_idempotent]
+
+theorem trunc_round_eq_round (x : ℕ) : trunc (round x) = round (x) := by
+  rw [trunc_eq_iff_round_eq]
+  exact round_idempotent x
+
+theorem round_trunc_eq_trunc (x : ℕ) : round (trunc x) = trunc (x) := by
+  rw [← trunc_eq_iff_round_eq]
+  exact Trunc.trunc_idempotent x
+
+theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
+  cases a1 a with
+  | inl hlo => exact hlo
+  | inr hhi =>
+    exfalso
+    apply Nat.lt_le_antisymm (Trunc.lt_next_trunc a)
+    apply Nat.le_trans (m := round a)
+    . exact ge_of_eq hhi
+    . exact h
+
+theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
+  round y ≤ trunc x := by
+  cases Nat.lt_or_eq_of_le h with
+  | inl lt => -- lt : y < trunc x
+    have pos := Nat.zero_lt_of_lt lt
+    rw [← Trunc.next_trunc_pred_eq_self' pos]
+    apply Nat.le_trans (round_le_next_trunc y)
+    apply Trunc.next_le_next
+    apply Trunc.trunc_le_trunc
+    rw [← Nat.lt_iff_le_pred pos]
+    exact lt
+  | inr eq => -- eq : y = trunc x
+    rw [eq, round_trunc_eq_trunc]
+
+end Faithful
+
+namespace Correct
+
+open Faithful
+
+-- Correctly rounding axioms
 axiom a2 {x : ℕ} : round x = trunc x → x - trunc x ≤ next (trunc x) - x
 axiom a3 {x : ℕ} : round x = next (trunc x) → next (trunc x) - x ≤ x - trunc x
 
@@ -27,37 +100,11 @@ theorem a3' {x : ℕ} (h : next (trunc x) - x < x - trunc x) :
   round x = next (trunc x) :=
     Or.elim (a1 x) (fun l => False.elim ((not_lt_of_ge (a2 l)) h)) (fun r => r)
 
-theorem a0 (x : ℕ) : trunc x = x ↔ round x = x := by
-  constructor
-  . intro l
-    apply l ▸ a2'
-    rw [Nat.sub_self]
-    exact Nat.sub_pos_of_lt (Trunc.lt_next x)
-  . intro r
-    cases a1 x with
-    | inl lo => exact lo ▸ r
-    | inr hi =>
-      rw [r] at hi
-      apply absurd
-      . exact Trunc.lt_next_trunc x
-      . exact Eq.not_lt hi
-
-theorem a0' {x : ℕ} (h : trunc x = x) : round x = trunc x := by rwa [h, ← a0]
-
-theorem round_idempotent (x : ℕ) : round (round x) = round x := by
-  cases a1 x with
-  | inl lo => rw [← a0, lo, Trunc.trunc_idempotent]
-  | inr hi => rw [← a0, hi, Trunc.trunc_next_comm, Trunc.trunc_idempotent]
-
-theorem a0'' (x : ℕ) : trunc (round x) = round (x) := by
-  rw [a0]
-  exact round_idempotent x
-
 theorem a2'' {x : ℕ} (h : x < trunc x + ulp x / 2) :
   round x = trunc x := by
   cases lt_or_ge n x.size with
   | inr size_le => -- size_le : x.size ≤ n
-    apply a0'
+    apply Faithful.round_eq_trunc_of_trunc_eq
     unfold trunc sig ulp expt
     rw [Nat.sub_eq_zero_of_le size_le]
     rw [Nat.pow_zero, Nat.mul_one, Nat.div_one]
@@ -97,26 +144,14 @@ theorem a3'' {x : ℕ} (h : trunc x + ulp x / 2 < x) :
     rw [← mul_two, ← mul_two, ← add_mul]
     exact Nat.mul_lt_mul_of_pos_right h two_pos
 
-theorem trunc_add_half_ulp_eq_of_size_le {x : ℕ} (size_le : x < 2 ^ n)
-  : trunc x + ulp x / 2 = x := by
-  unfold trunc sig
-  rw [Trunc.ulp_eq_one_of_lt size_le]
-  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_zero one_lt_two, Nat.add_zero]
-
-theorem trunc_add_half_ulp_eq_of_lt_size {x : ℕ} (lt_size : 2 ^ n ≤ x) :
-  2 * (trunc x + ulp x / 2) = trunc x + next (trunc x) := by
-  have ulp_even := Trunc.two_dvd_ulp_of_ge lt_size
-  rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc, Nat.mul_comm,
-      Nat.div_mul_cancel ulp_even, ← Trunc.ulp_trunc_eq_ulp, next]
-
 theorem a2''' {x : ℕ} (hf : round x = trunc x) :
   x ≤ trunc x + ulp x / 2 := by
   cases Nat.lt_or_ge x (2 ^ n) with
   | inl size_le =>
-    exact ge_of_eq (trunc_add_half_ulp_eq_of_size_le size_le)
+    exact ge_of_eq (Trunc.trunc_add_half_ulp_eq_of_size_le size_le)
   | inr lt_size =>
     refine Nat.le_of_mul_le_mul_left ?_ two_pos
-    rw [trunc_add_half_ulp_eq_of_lt_size lt_size]
+    rw [Trunc.trunc_add_half_ulp_eq_of_lt_size lt_size]
     have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
     have h2 : trunc x ≤ x := Trunc.trunc_le _
     rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h2, Nat.add_comm,
@@ -127,10 +162,10 @@ theorem a3''' {x : ℕ} (hf : round x = next (trunc x)) :
   trunc x + ulp x / 2 ≤ x := by
   cases Nat.lt_or_ge x (2 ^ n) with
   | inl size_le =>
-    exact le_of_eq (trunc_add_half_ulp_eq_of_size_le size_le)
+    exact le_of_eq (Trunc.trunc_add_half_ulp_eq_of_size_le size_le)
   | inr lt_size =>
     refine Nat.le_of_mul_le_mul_left ?_ two_pos
-    rw [trunc_add_half_ulp_eq_of_lt_size lt_size]
+    rw [Trunc.trunc_add_half_ulp_eq_of_lt_size lt_size]
     have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
     have h2 : trunc x ≤ x := Trunc.trunc_le _
     rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h1, Nat.add_comm,
@@ -142,7 +177,7 @@ theorem round_eq_trunc_add_half {x : ℕ} :
   cases Nat.lt_or_ge x (2 ^ n) with
   | inl size_le => -- size_le : x < 2 ^ n
     apply Or.inl
-    rw [trunc_add_half_ulp_eq_of_size_le size_le]
+    rw [Trunc.trunc_add_half_ulp_eq_of_size_le size_le]
   | inr lt_size => -- lt_size : n < x.size
     cases eq_or_ne x (trunc x + ulp x / 2) with
     | inl eq => exact Or.inl eq
@@ -183,12 +218,6 @@ theorem nearest {x : ℕ} :
   (round x = next (trunc x) ∧ next (trunc x) - x ≤ x - trunc x) :=
   Or.elim (a1 x) (fun lo => Or.inl ⟨lo, a2 lo⟩) (fun hi => Or.inr ⟨hi, a3 hi⟩)
 
-theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
-  Or.elim (a1 x) ge_of_eq (fun hi => hi.symm ▸ Nat.le_add_right _ _)
-
-theorem round_le_next_trunc (x : ℕ) : round x ≤ next (trunc x) :=
-  Or.elim (a1 x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
-
 theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
   have lolo : trunc a ≤ trunc b := Trunc.trunc_le_trunc hle
   have lohi : trunc a ≤ next (trunc b) :=
@@ -218,14 +247,6 @@ theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
       . rw [trunc_eq, ulp_eq]
         exact a3''' ahi
 
-theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
-  cases Round.a1 a with
-  | inl hlo => exact hlo
-  | inr hhi =>
-    exfalso
-    apply Nat.lt_le_antisymm (Trunc.lt_next_trunc a)
-    apply Nat.le_trans (m := round a)
-    . exact ge_of_eq hhi
-    . exact h
+end Correct
 
 end Fl.Round

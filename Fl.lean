@@ -27,6 +27,10 @@ open Round.Defs
 -- (i)  Whenever a ∘ b is a floating point number, fl (a ∘ b) = a ∘ b
 -- (ii) Otherwise, fl (a ∘ b) is either ⌈a ∘ b⌉ or ⌊a ∘ b⌋
 
+-- The arithmetic is *correctly rounding* if it is faithful and:
+-- (i)  fl (a ∘ b) = ⌊a ∘ b⌋ if a ∘ b - ⌊a ∘ b⌋ < ⌈a ∘ b⌉ - a ∘ b
+-- (ii) fl (a ∘ b) = ⌈a ∘ b⌉ if a ∘ b - ⌊a ∘ b⌋ > ⌈a ∘ b⌉ - a ∘ b
+
 -- Sterbenz' Lemma (Priest, p. 12):
 --    If a and b are floating point numbers such that 1 / 2 ≤ a / b ≤ 2
 --    then a - b is also a floating point number.
@@ -141,17 +145,17 @@ theorem s2 {a b : ℕ} (hab : a ≤ b)
   cases Nat.lt_or_ge (2 * a) b with
   | inr hba => -- ge : 2 * a ≥ b
     have hf : round (b - a) = b - a := by
-      rw [← Round.a0]
+      rw [← Round.Faithful.trunc_eq_iff_round_eq]
       exact sterbenz hab hba hfb hfa
     rw [hf, Nat.sub_sub_self hab]
     exact hfa
   | inl hab' => -- lt : 2 * a < b
     apply sterbenz
-    . rw [Round.a0] at hfb
-      apply Nat.le_trans (m := round b)
-      . apply Round.round_le_round
+    . apply Nat.le_trans (m := trunc b)
+      . apply Round.Faithful.round_le_trunc_of_le_trunc
+        rw [hfb]
         exact Nat.sub_le _ _
-      . exact Nat.le_of_eq hfb
+      . exact Trunc.trunc_le _
     . apply Nat.le_trans (m := 2 * trunc (b - a))
       . rw [← pow_one 2, ← Trunc.trunc_pow_mul, pow_one]
         apply Nat.le_trans (m := trunc b)
@@ -161,9 +165,9 @@ theorem s2 {a b : ℕ} (hab : a ≤ b)
               Nat.add_sub_assoc (le_of_lt hab')]
           exact Nat.le_add_right _ _
       . apply Nat.mul_le_mul_left
-        exact Round.trunc_le_round _
+        exact Round.Faithful.trunc_le_round _
     . exact hfb
-    . exact Round.a0'' _
+    . exact Round.Faithful.trunc_round_eq_round _
 
 -- Inner part of the proof for property S3.
 -- Let b be a floating point number such that 0 ≤ a ≤ b and ulp b ≤ 2 * a.
@@ -204,21 +208,21 @@ theorem s3 {a b d : ℕ}
   (had : a ≤ d) (hdc : d ≤ round (b - round (b - a))) :
   round (round (b - round (b - a)) - d) = round (b - round (b - a)) - d := by
   have hfc : round (b - round (b - a)) = b - round (b - a) := by
-    rw [← Round.a0]
+    rw [← Round.Faithful.trunc_eq_iff_round_eq]
     exact s2 hab hfa hfb
   have helo : round (b - a) < b - a := by
     rw [lt_tsub_comm, ← hfc]
     exact hac
   have hcd : round (b - round (b - a)) ≤ 2 * d := by
     have hfe : round (b - a) = trunc (b - a) :=
-      Round.round_eq_trunc_of_le (Nat.le_of_lt helo)
+      Round.Faithful.round_eq_trunc_of_le (Nat.le_of_lt helo)
     apply Nat.le_trans (m := 2 * a)
     . rw [hfc, hfe]
       exact s3' hfb hba
     . exact Nat.mul_le_mul_left 2 had
-  rw [← Round.a0]
+  rw [← Round.Faithful.trunc_eq_iff_round_eq]
   apply sterbenz
   . exact hdc
   . exact hcd
-  . exact Round.a0'' (b - round (b - a))
+  . exact Round.Faithful.trunc_round_eq_round (b - round (b - a))
   . exact hfd
