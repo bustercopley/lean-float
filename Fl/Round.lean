@@ -8,17 +8,39 @@ import Fl.Trunc
 
 namespace Fl.Round
 
+open Trunc.Defs
+
 namespace Defs
+
 axiom round : ℕ → ℕ
+
+def monotonic₁ := ∀ {a b c : ℕ}, trunc a = a → trunc b = b → trunc c = c →
+  a ≤ b → round (a - c) ≤ round (b - c)
+def monotonic₂ := ∀ {a b c : ℕ}, trunc a = a → trunc b = b → trunc c = c →
+  a ≤ b → round (c - b) ≤ round (c - a)
+
 end Defs
 
 open Defs
-open Fl.Trunc.Defs
 
 namespace Faithful
 
 -- Faithful axioms
 axiom a0 {x : ℕ} : trunc x = x → round x = x
+
+theorem round_trunc_eq_trunc (x : ℕ) : round (trunc x) = trunc (x) := by
+  apply a0
+  exact Trunc.trunc_idempotent x
+
+theorem round_eq_trunc_of_trunc_eq {x : ℕ} (h : trunc x = x) :
+  round x = trunc x := by
+  rw [h]
+  exact a0 h
+
+theorem round_eq_of_trunc_eq {x : ℕ} (h : trunc x = x) :
+  round x = x := by
+  exact Eq.trans (round_eq_trunc_of_trunc_eq h) h
+
 axiom a1 (x : ℕ) : round x = trunc x ∨ round x = next (trunc x)
 
 theorem trunc_eq_iff_round_eq (x : ℕ) : trunc x = x ↔ round x = x := by
@@ -33,10 +55,6 @@ theorem trunc_eq_iff_round_eq (x : ℕ) : trunc x = x ↔ round x = x := by
       apply absurd
       . exact Trunc.lt_next_trunc x
       . exact Eq.not_lt hi
-
-theorem round_eq_trunc_of_trunc_eq {x : ℕ} (h : trunc x = x) :
-  round x = trunc x :=
-  by rwa [h, ← trunc_eq_iff_round_eq]
 
 theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
   Or.elim (a1 x) ge_of_eq (fun hi => hi.symm ▸ Nat.le_add_right _ _)
@@ -53,10 +71,6 @@ theorem round_idempotent (x : ℕ) : round (round x) = round x := by
 theorem trunc_round_eq_round (x : ℕ) : trunc (round x) = round (x) := by
   rw [trunc_eq_iff_round_eq]
   exact round_idempotent x
-
-theorem round_trunc_eq_trunc (x : ℕ) : round (trunc x) = trunc (x) := by
-  rw [← trunc_eq_iff_round_eq]
-  exact Trunc.trunc_idempotent x
 
 theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
   cases a1 a with
@@ -77,10 +91,17 @@ theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
     apply Nat.le_trans (round_le_next_trunc y)
     apply Trunc.next_le_next
     apply Trunc.trunc_le_trunc
-    rw [← Nat.lt_iff_le_pred pos]
+    apply Nat.le_pred_of_lt
     exact lt
   | inr eq => -- eq : y = trunc x
     rw [eq, round_trunc_eq_trunc]
+
+theorem round_sub_le_of_trunc_eq {a b : ℕ} (h : trunc b = b) :
+  round (b - a) ≤ b := by
+  apply Nat.le_trans
+  . apply Round.Faithful.round_le_trunc_of_le_trunc
+    exact Nat.le_trans (Nat.sub_le _ _) h.ge
+  . exact Trunc.trunc_le _
 
 end Faithful
 
@@ -94,11 +115,11 @@ axiom a3 {x : ℕ} : round x = next (trunc x) → next (trunc x) - x ≤ x - tru
 
 theorem a2' {x : ℕ} (h : x - trunc x < next (trunc x) - x) :
   round x = trunc x :=
-    Or.elim (a1 x) (fun l => l) (fun r => False.elim ((not_lt_of_ge (a3 r)) h))
+    Or.elim (a1 x) id (fun r => False.elim ((not_lt_of_ge (a3 r)) h))
 
 theorem a3' {x : ℕ} (h : next (trunc x) - x < x - trunc x) :
   round x = next (trunc x) :=
-    Or.elim (a1 x) (fun l => False.elim ((not_lt_of_ge (a2 l)) h)) (fun r => r)
+    Or.elim (a1 x) (fun l => False.elim ((not_lt_of_ge (a2 l)) h)) id
 
 theorem a2'' {x : ℕ} (h : x < trunc x + ulp x / 2) :
   round x = trunc x := by
@@ -218,6 +239,8 @@ theorem nearest {x : ℕ} :
   (round x = next (trunc x) ∧ next (trunc x) - x ≤ x - trunc x) :=
   Or.elim (a1 x) (fun lo => Or.inl ⟨lo, a2 lo⟩) (fun hi => Or.inr ⟨hi, a3 hi⟩)
 
+-- Monotonicity follows from correct rounding
+
 theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
   have lolo : trunc a ≤ trunc b := Trunc.trunc_le_trunc hle
   have lohi : trunc a ≤ next (trunc b) :=
@@ -246,6 +269,17 @@ theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
       . exact a2''' blo
       . rw [trunc_eq, ulp_eq]
         exact a3''' ahi
+
+theorem monotonic : monotonic₁ ∧ monotonic₂ := by
+  constructor
+  . unfold monotonic₁
+    intro a b c _ _ _ hab
+    apply round_le_round
+    exact Nat.sub_le_sub_right hab _
+  . unfold monotonic₂
+    intro a b c _ _ _ hab
+    apply round_le_round
+    exact Nat.sub_le_sub_left _ hab
 
 end Correct
 
