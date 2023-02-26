@@ -96,9 +96,9 @@ theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
   | inr eq => -- eq : y = trunc x
     rw [eq, round_trunc_eq_trunc]
 
-theorem round_sub_le_of_trunc_eq {a b : ℕ} (h : trunc b = b) :
+theorem round_sub_le_of_trunc_eq (a : ℕ) {b : ℕ} (h : trunc b = b) :
   round (b - a) ≤ b := by
-  apply Nat.le_trans
+  apply Nat.le_trans (m := trunc b)
   . apply Round.Faithful.round_le_trunc_of_le_trunc
     exact Nat.le_trans (Nat.sub_le _ _) h.ge
   . exact Trunc.trunc_le _

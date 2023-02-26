@@ -168,6 +168,11 @@ theorem s2 {a b : ℕ} (hab : a ≤ b)
     . exact hfb
     . exact Round.Faithful.trunc_round_eq_round _
 
+theorem s2' {a b : ℕ} (hab : a ≤ b)
+  (hfa : trunc a = a) (hfb : trunc b = b) :
+  round (b - round (b - a)) = b - round (b - a) :=
+  Round.Faithful.round_eq_of_trunc_eq (s2 hab hfa hfb)
+
 -- Inner part of the proof for property S3.
 -- Let b be a floating point number such that 0 ≤ a ≤ b and ulp b ≤ 2 * a.
 -- Let b' be the greatest floating point number not greater than b - a.
@@ -232,235 +237,144 @@ theorem s3 {a b d : ℕ}
 -- then the following algorithm computes a number s such that
 -- round (w - s) = w - s exactly for all w between x and y inclusive.
 
--- Note the result in Priest (Proposition, p. 10) is much stronger,
--- assuming only monotonicity, antisymmetry and properties S1 to S3
-
 -- float shift (float x, float y, float z) {
 --   float t = y - (y - z);
 --   float s = x - (x - t);
 --   return s;
 -- }
-theorem interval_shift {x y z w s t : ℕ}
-  (h₂ : monotonic₂)
+
+-- Note the result in Priest (Proposition, p. 10) is stronger,
+-- assuming only monotonicity, antisymmetry and properties S1 to S3
+
+theorem interval_shift₁ {x y z w s t : ℕ}
+  (hm₂ : monotonic₂)
   (hfx : trunc x = x) (hfy : trunc y = y)
   (hfz : trunc z = z) (hfw : trunc w = w)
-  (hzx : z < x) (hzy : z < y) (hyx : ulp y ≤ x) (hxy : ulp x ≤ y)
+  (hzx : z ≤ x) (hzy : z ≤ y) (hyxulp : ulp y ≤ 2 * x)
+  (ht : t = round (y - round (y - z)))
+  (hs₁ : x < t → s = round (x + round (t - x)))
+  (hs₂ : t ≤ x → s = round (x - round (x - t)))
+  (hxw : x ≤ w) (hwy : w ≤ y) :
+  trunc (w - s) = w - s ∧ trunc (s - w) = s - w := by
+  have hxy : x ≤ y := Nat.le_trans hxw hwy
+  have ht' : t = y - round (y - z) := calc
+    t = round (y - round (y - z)) := ht
+    _ = y - round (y - z)         := s2' hzy hfz hfy
+  have htx' : t ≤ y - round (y - x) := calc
+    t = y - round (y - z) := ht'
+    _ ≤ y - round (y - x) := Nat.sub_le_sub_left y (hm₂ hfz hfx hfy hzx)
+  have hzy' : round (y - z) ≤ y := Round.Faithful.round_sub_le_of_trunc_eq _ hfy
+  have hft : trunc t = t := ht ▸ Round.Faithful.trunc_round_eq_round _
+  have hfx' : round (y - round (y - x)) = y - round (y - x) := s2' hxy hfx hfy
+  have hfut {u : ℕ} (hxu : x ≤ u) (hut : u < t) (hfu : trunc u = u)
+    (hux' : u ≤ round (y - round (y - x))) :
+    trunc (t - u) = t - u := by
+    have hfuxy : trunc (y - round (y - x) - u) = y - round (y - x) - u := by
+      have hxyx : x < round (y - round (y - x)) := by
+        rw [hfx']
+        exact Nat.lt_of_lt_of_le (Nat.lt_of_le_of_lt hxu hut) htx'
+      rw [← hfx']
+      exact s3 hfx hfy hfu hyxulp hxy hxyx hxu hux'
+    rw [ht] at hut htx' ⊢
+    rw [← Round.Faithful.trunc_eq_iff_round_eq] at hfx'
+    exact s1 hut.le htx' hfu hfx' (Round.Faithful.trunc_round_eq_round _) hfuxy
+  have hfty : trunc (y - t) = y - t := by
+    rw [ht', Nat.sub_sub_self hzy', Round.Faithful.trunc_round_eq_round]
+  have hst : s = t := by
+    rw [← Round.Faithful.round_eq_of_trunc_eq hft]
+    cases Nat.lt_or_ge x t with
+    | inl hxt => -- hxt : x < t
+      have hfxt : round (t - x) = t - x := by
+        apply Round.Faithful.round_eq_of_trunc_eq
+        apply hfut le_rfl hxt hfx
+        rw [hfx']
+        exact Nat.le_trans hxt.le htx'
+      rw [hs₁ hxt, hfxt, add_tsub_cancel_of_le hxt.le]
+    | inr htx => -- htx : x ≥ t
+      have hftx : round (x - t) = x - t := by
+        apply Round.Faithful.round_eq_of_trunc_eq
+        rw [ht] at htx hfty ⊢
+        exact s1 htx hxy (Round.Faithful.trunc_round_eq_round _) hfy hfx hfty
+      rw [hs₂ htx, hftx, tsub_tsub_cancel_of_le htx]
+  rw [hst]
+  cases Nat.lt_or_ge w t with
+  | inl hwt => -- hwt : w < t
+    constructor
+    . rw [Nat.sub_eq_zero_of_le hwt.le, Trunc.trunc_zero]
+    . exact hfut hxw hwt hfw (Nat.le_trans hwt.le (hfx'.symm ▸ htx'))
+  | inr htw => -- htw : w ≥ t
+    constructor
+    . exact s1 htw hwy hft hfy hfw hfty
+    . rw [Nat.sub_eq_zero_of_le htw, Trunc.trunc_zero]
+
+theorem interval_shift₂ {x y z w s t : ℕ}
+  (hm₂ : monotonic₂)
+  (hfx : trunc x = x) (hfy : trunc y = y)
+  (hfw : trunc w = w)
+  (hxyulp : ulp x ≤ 2 * y)
+  (ht : t = round (y - round (y - z)))
+  (hs₂ : t ≤ x → s = round (x - round (x - t)))
+  (hyw : y ≤ w) (hwx : w ≤ x) :
+  trunc (w - s) = w - s ∧ trunc (s - w) = s - w := by
+  have hty : t ≤ y := ht ▸ Round.Faithful.round_sub_le_of_trunc_eq _ hfy
+  have hyx := Nat.le_trans hyw hwx
+  have htx : t ≤ x := Nat.le_trans hty hyx
+  have hs : s = round (x - round (x - t)) := hs₂ htx
+  have hfs : trunc s = s := hs.symm ▸ Round.Faithful.trunc_round_eq_round _
+  have hft : trunc t = t := ht.symm ▸ Round.Faithful.trunc_round_eq_round _
+  have hty' : round (x - y) ≤ round (x - t) := hm₂ hft hfy hfx hty
+  have hfy' : round (x - round (x - y)) = x - round (x - y) := s2' hyx hfy hfx
+  have hsy' : s ≤ round (x - round (x - y)) := calc
+    s = round (x - round (x - t)) := hs
+    _ = x - round (x - t)         := s2' htx hft hfx
+    _ ≤ x - round (x - y)         := Nat.sub_le_sub_left _ hty'
+    _ = round (x - round (x - y)) := hfy'.symm
+  have hfsx : trunc (x - s) = x - s := by
+    rw [hs]
+    apply s2
+    . exact Round.Faithful.round_sub_le_of_trunc_eq _ hfx
+    . exact Round.Faithful.trunc_round_eq_round _
+    . exact hfx
+  obtain hsy | ⟨hys, hws | hsw⟩ : s ≤ y ∨ y < s ∧ (w ≤ s ∨ s ≤ w) :=
+    Or.elim (Nat.lt_or_ge y s) (fun h => Or.inr ⟨h, Nat.le_total w s⟩) Or.inl
+  . constructor
+    . exact s1 (Nat.le_trans hsy hyw) hwx hfs hfx hfw hfsx
+    . rw [Nat.sub_eq_zero_of_le (Nat.le_trans hsy hyw), Trunc.trunc_zero]
+  . constructor
+    . rw [Nat.sub_eq_zero_of_le hws, Trunc.trunc_zero]
+    . have hyy' : y < round (x - round (x - y)) := Nat.lt_of_lt_of_le hys hsy'
+      have hwy' : w ≤ round (x - round (x - y)) := Nat.le_trans hws hsy'
+      apply s1 hws hsy' hfw (Round.Faithful.trunc_round_eq_round _) hfs
+      exact s3 hfy hfx hfw hxyulp hyx hyy' hyw hwy'
+  . constructor
+    . exact s1 hsw hwx hfs hfx hfw hfsx
+    . rw [Nat.sub_eq_zero_of_le hsw, Trunc.trunc_zero]
+
+theorem interval_shift {x y z w s t : ℕ}
+  (hm₂ : monotonic₂)
+  (hfx : trunc x = x) (hfy : trunc y = y)
+  (hfz : trunc z = z) (hfw : trunc w = w)
+  (hzx : z ≤ x) (hzy : z ≤ y) (hyx : ulp y ≤ 2 * x) (hxy : ulp x ≤ 2 * y)
   (ht : t = round (y - round (y - z)))
   (hs₁ : x < t → s = round (x + round (t - x)))
   (hs₂ : t ≤ x → s = round (x - round (x - t)))
   (hxwy : (x ≤ w ∧ w ≤ y) ∨ (y ≤ w ∧ w ≤ x)) :
   trunc (w - s) = w - s ∧ trunc (s - w) = s - w := by
-  have hft : trunc t = t := by
-    rw [ht]
-    exact Round.Faithful.trunc_round_eq_round _
   rcases hxwy with ⟨hxw, hwy⟩ | ⟨hyw, hwx⟩
-  . have hfty : trunc (y - t) = y - t := by
-      rw [ht]
-      apply s2
-      . exact Round.Faithful.round_sub_le_of_trunc_eq hfy
-      . exact Round.Faithful.trunc_round_eq_round _
-      . exact hfy
-    cases Nat.lt_or_ge x t with
-    | inl hxt =>
-      have hft' : t = y - round (y - z) := by
-        rw [ht]
-        rw [← Round.Faithful.trunc_eq_iff_round_eq]
-        apply s2
-        . exact hzy.le
-        . exact hfz
-        . exact hfy
-      have hty' : t ≤ y - round (y - x) := by
-        rw [hft']
-        apply Nat.sub_le_sub_left
-        exact h₂ hfz hfx hfy hzx.le
-      have hfy' : round (y - round (y - x)) = y - round (y - x) := by
-        rw [← Round.Faithful.trunc_eq_iff_round_eq]
-        apply s2
-        . exact Nat.le_trans hxw hwy
-        . exact hfx
-        . exact hfy
-      have hxyx : x < round (y - round (y - x)) := by
-        rw [hfy']
-        exact Nat.lt_of_lt_of_le hxt hty'
-      have hfxy : trunc (y - round (y - x) - x) = y - round (y - x) - x := by
-        rw [← hfy']
-        apply s3
-        . exact hfx
-        . exact hfy
-        . exact hfx
-        . exact Nat.le_trans hyx (Nat.le_mul_of_pos_left two_pos)
-        . exact Nat.le_trans hxw hwy
-        . exact hxyx
-        . exact le_rfl
-        . exact hxyx.le
-      have hfxt : trunc (t - x) = t - x := by
-        rw [ht]
-        apply s1
-        . exact Nat.le_of_lt (ht ▸ hxt)
-        . exact ht ▸ hty'
-        . exact hfx
-        . rw [Round.Faithful.trunc_eq_iff_round_eq]
-          exact hfy'
-        . exact Round.Faithful.trunc_round_eq_round _
-        . exact hfxy
-      have hst : s = t := by
-        rw [hs₁ hxt, Round.Faithful.round_eq_of_trunc_eq hfxt,
-            add_tsub_cancel_of_le hxt.le]
-        exact Round.Faithful.round_eq_of_trunc_eq hft
-      rw [hst]
-      cases Nat.lt_or_ge w t with
-      | inr htw =>
-        constructor
-        . apply s1
-          . exact htw
-          . exact hwy
-          . exact hft
-          . exact hfy
-          . exact hfw
-          . exact hfty
-        . rw [Nat.sub_eq_zero_of_le htw.le, Trunc.trunc_zero]
-      | inl hwt =>
-        constructor
-        . rw [Nat.sub_eq_zero_of_le hwt.le, Trunc.trunc_zero]
-        . rw [ht]
-          apply s1
-          . exact ht ▸ hwt.le
-          . exact ht ▸ hty'
-          . exact hfw
-          . rw [Round.Faithful.trunc_eq_iff_round_eq]
-            exact hfy'
-          . exact Round.Faithful.trunc_round_eq_round _
-          . rw [← hfy']
-            apply s3
-            . exact hfx
-            . exact hfy
-            . exact hfw
-            . exact Nat.le_trans hyx (Nat.le_mul_of_pos_left two_pos)
-            . exact Nat.le_trans hxw hwy
-            . exact hxyx
-            . exact hxw
-            . apply Nat.le_trans hwt.le (hfy'.symm ▸ hty')
-    | inr htx => -- htx : t ≤ x
-      have hftx : round (x - t) = x - t := by
-        rw [← Round.Faithful.trunc_eq_iff_round_eq]
-        rw [ht]
-        apply s1
-        . exact ht ▸ htx
-        . exact Nat.le_trans hxw hwy
-        . exact Round.Faithful.trunc_round_eq_round _
-        . exact hfy
-        . exact hfx
-        . exact ht ▸ hfty
-      have hst : s = t := by
-        rw [hs₂ htx, hftx, tsub_tsub_cancel_of_le htx, ht]
-        exact Round.Faithful.round_idempotent _
-      constructor
-      . rw [hst, ht]
-        apply s1
-        . rw [← ht]
-          exact Nat.le_trans htx hxw
-        . exact hwy
-        . exact Round.Faithful.trunc_round_eq_round _
-        . exact hfy
-        . exact hfw
-        . rw [← ht]
-          exact hfty
-      . rw [Nat.sub_eq_zero_of_le (hst ▸ Nat.le_trans htx hxw), Trunc.trunc_zero]
-  . have hty : round (y - round (y - z)) ≤ y :=
-      Round.Faithful.round_sub_le_of_trunc_eq hfy
-    have htx : t ≤ x := (Nat.le_trans (ht.symm ▸ hty) (Nat.le_trans hyw hwx))
-    have hs : s = round (x - round (x - t)) := hs₂ htx
-    have hfsx : trunc (x - s) = x - s := by
-      rw [hs]
-      apply s2
-      . apply Nat.le_trans (m := trunc x)
-        . apply Round.Faithful.round_le_trunc_of_le_trunc
-          rw [hfx]
-          exact Nat.sub_le _ _
-        . exact Trunc.trunc_le _
-      . exact Round.Faithful.trunc_round_eq_round _
-      . exact hfx
-    cases Nat.lt_or_ge y s with
-    | inr hsy => -- hsy : s ≤ y
-      constructor
-      . apply s1
-        . exact Nat.le_trans hsy hyw
-        . exact hwx
-        . rw [hs]
-          exact Round.Faithful.trunc_round_eq_round _
-        . exact hfx
-        . exact hfw
-        . exact hfsx
-      . rw [Nat.sub_eq_zero_of_le (Nat.le_trans hsy hyw), Trunc.trunc_zero]
-    | inl hys => -- hys : y < s
-      have hfs' : s = x - round (x - t) := by
-        rw [hs, ← Round.Faithful.trunc_eq_iff_round_eq]
-        apply s2
-        . exact Nat.le_trans (ht.symm ▸ hty) (Nat.le_trans hyw hwx)
-        . exact hft
-        . exact hfx
-      have hfs : trunc s = s := by
-        rw [hs]
-        exact Round.Faithful.trunc_round_eq_round _
-      have hyxtx : x - round (x - t) ≤ x - round (x - y) := by
-        apply Nat.sub_le_sub_left
-        exact h₂ hft hfy hfx (ht ▸ hty)
-      have hys' : y < x - round (x - y) := by
-        apply Nat.lt_of_lt_of_le hys
-        apply Nat.le_trans hfs'.le
-        exact hyxtx
-      have hfyx : round (x - round (x - y)) = x - round (x - y) := by
-        rw [← Round.Faithful.trunc_eq_iff_round_eq]
-        apply s2
-        . exact Nat.le_trans hyw hwx
-        . exact hfy
-        . exact hfx
-      constructor
-      . cases Nat.le_total w s with
-        | inl hws =>
-          rw [Nat.sub_eq_zero_of_le hws, Trunc.trunc_zero]
-        | inr hsw =>
-          apply s1
-          . exact hsw
-          . exact hwx
-          . exact hfs
-          . exact hfx
-          . exact hfw
-          . exact hfsx
-      . cases Nat.le_total w s with
-        | inr hsw =>
-          rw [Nat.sub_eq_zero_of_le hsw, Trunc.trunc_zero]
-        | inl hws =>
-          apply s1
-          . exact hws
-          . exact hfs'.symm ▸ hyxtx
-          . exact hfw
-          . rw [Round.Faithful.trunc_eq_iff_round_eq]
-            exact hfyx
-          . exact hfs
-          . rw [← hfyx]
-            apply s3
-            . exact hfy
-            . exact hfx
-            . exact hfw
-            . exact Nat.le_trans hxy (Nat.le_mul_of_pos_left two_pos)
-            . exact Nat.le_trans hyw hwx
-            . exact hfyx.symm ▸ hys'
-            . exact hyw
-            . apply Nat.le_trans hws
-              rw [hfyx]
-              apply Nat.le_trans hfs'.le
-              exact hyxtx
+  . exact interval_shift₁ hm₂ hfx hfy hfz hfw hzx hzy hyx ht hs₁ hs₂ hxw hwy
+  . exact interval_shift₂ hm₂ hfx hfy hfw hxy ht hs₂ hyw hwx
 
 -- Still weaker version using the correct rounding axioms
 theorem interval_shift' {x y z w s t : ℕ}
   (hfx : trunc x = x) (hfy : trunc y = y)
   (hfz : trunc z = z) (hfw : trunc w = w)
-  (hzx : z < x) (hzy : z < y) (hyx : ulp y ≤ x) (hxy : ulp x ≤ y)
+  (hzx : z ≤ x) (hzy : z ≤ y) (hyx : ulp y ≤ 2 * x) (hxy : ulp x ≤ 2 * y)
   (ht : t = round (y - round (y - z)))
   (hs₁ : x < t → s = round (x + round (t - x)))
   (hs₂ : t ≤ x → s = round (x - round (x - t)))
   (hxwy : (x ≤ w ∧ w ≤ y) ∨ (y ≤ w ∧ w ≤ x)) :
   trunc (w - s) = w - s ∧ trunc (s - w) = s - w := by
-  have h₂ : monotonic₂ := Round.Correct.monotonic.right
-  apply interval_shift h₂ hfx hfy hfz hfw hzx hzy hyx hxy ht hs₁ hs₂ hxwy
+  have hm₂ : monotonic₂ := Round.Correct.monotonic.right
+  rcases hxwy with ⟨hxw, hwy⟩ | ⟨hyw, hwx⟩
+  . exact interval_shift₁ hm₂ hfx hfy hfz hfw hzx hzy hyx ht hs₁ hs₂ hxw hwy
+  . exact interval_shift₂ hm₂ hfx hfy hfw hxy ht hs₂ hyw hwx
