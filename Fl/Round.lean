@@ -78,9 +78,20 @@ theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a :
   | inr hhi =>
     exfalso
     apply Nat.lt_le_antisymm (Trunc.lt_next_trunc a)
-    apply Nat.le_trans (m := round a)
-    . exact ge_of_eq hhi
-    . exact h
+    exact hhi ▸ h
+
+theorem round_eq_trunc_iff_round_le (x : ℕ) :
+  round x = trunc x ↔ round x ≤ x :=
+  ⟨(fun h => h ▸ (Trunc.trunc_le x)), round_eq_trunc_of_le⟩
+
+theorem round_eq_next_trunc_of_gt {a : ℕ} (h : round a > a) :
+  round a = next (trunc a) := by
+  cases a1 a with
+  | inl hlo =>
+    exfalso
+    apply Nat.lt_le_antisymm h
+    exact hlo ▸ (Trunc.trunc_le _)
+  | inr hhi => exact hhi
 
 theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
   round y ≤ trunc x := by
