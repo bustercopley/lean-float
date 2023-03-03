@@ -499,89 +499,9 @@ theorem a1_lo_of_no_carry_of_round_le {a b : ℕ}
   . rw [Nat.dvd_mod_iff (Trunc.ulp_dvd_ulp hba)]
     exact Trunc.ulp_dvd_of_trunc_eq hfb
 
-theorem a1_lo_of_no_uflow_of_carry_of_round_le {a b : ℕ}
-  (hfa : trunc a = a) (hfb : trunc b = b) (hba : b ≤ a)
-  (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ Nat.size a ≤ a + b)
-  (round_le : round (a + b) ≤ a + b) :
-  trunc (a + b - round (a + b)) = a + b - round (a + b) := by
-  have size_eq : (a + b).size = a.size + 1 := by
-    apply Nat.le_antisymm
-    . rw [Nat.size_le, pow_succ, Nat.two_mul]
-      apply Nat.add_lt_add
-      . exact Nat.lt_size_self _
-      . exact Nat.lt_of_le_of_lt hba (Nat.lt_size_self _)
-    . rw [Nat.succ_le, Nat.lt_size]
-      exact carry
-  have le_size : n ≤ a.size := by
-    rw [← Nat.lt_succ, Nat.succ_eq_add_one, ← size_eq]
-    rw [Nat.lt_size]
-    exact no_uflow
-  have ulp_eq : ulp (a + b) = 2 * ulp a := by
-    unfold ulp expt
-    rw [← pow_succ, size_eq, Nat.sub_add_comm le_size]
-  have lt_trunc : a < (a + b) / ulp a * ulp a := by
-    apply Nat.lt_of_lt_of_le (m := trunc (a + b))
-    . apply Lemmas.lt_of_size_lt_size
-      rw [Trunc.size_trunc_eq_size]
-      exact size_eq.ge
-    . unfold trunc sig
-      rw [ulp_eq, ← Nat.mul_assoc]
-      apply Nat.mul_le_mul_right _
-      rw [Nat.mul_comm 2, ← Nat.div_div_eq_div_mul]
-      exact Nat.div_mul_le_self _ _
-  have ulp_le : ulp a ≤ b := by
-    have ulp_pos : 0 < ulp a := Trunc.ulp_pos _
-    have ulp_dvd : ulp a ∣ a := Trunc.ulp_dvd_of_trunc_eq hfa
-    rw [← Nat.one_le_div_iff ulp_pos]
-    apply Lemmas.lt_of_mul_lt_mul_right (ulp a)
-    apply Nat.lt_of_add_lt_add_left (k := a / ulp a * ulp a)
-    rw [Nat.zero_mul, Nat.add_zero, ← Nat.add_mul,
-        ← Lemmas.add_div_of_pos_of_dvd ulp_pos ulp_dvd,
-        ← sig, ← trunc, hfa]
-    exact lt_trunc
-  have ⟨d, hd⟩ : ulp a ∣ (a + b) / ulp a * ulp a % (2 * ulp a) := by
-    have h₁ : ulp a ∣ ulp a * 2 := ⟨2, rfl⟩
-    rw [Nat.mul_comm, Nat.mul_comm 2, Nat.dvd_mod_iff h₁]
-    exact ⟨_, rfl⟩
-  have hdle : d ≤ 1 := by
-    apply Nat.le_of_lt_succ
-    apply Lemmas.lt_of_mul_lt_mul_right (ulp a)
-    rw [Nat.mul_comm, ← hd]
-    apply Nat.mod_lt
-    exact Nat.mul_pos two_pos (Trunc.ulp_pos _)
-  have h₁ : (a + b) % ulp a = b % ulp a := by
-    rw [← Nat.mod_add_mod,
-        Nat.mod_eq_zero_of_dvd (Trunc.ulp_dvd_of_trunc_eq hfa),
-        Nat.zero_add]
-  have h₂ : trunc (a + b) = (a + b) / ulp a * ulp a / (2 * ulp a) * (2 * ulp a) := by
-    rw [Nat.mul_comm 2, ← Nat.div_div_eq_div_mul,
-        Nat.mul_div_cancel _ (Trunc.ulp_pos _), Nat.div_div_eq_div_mul,
-        Nat.mul_comm (ulp a), ← ulp_eq, ← sig, ← trunc]
-  have h₃ : a + b - trunc (a + b) = d * ulp a + b % ulp a := by
-    rw [tsub_eq_iff_eq_add_of_le (Trunc.trunc_le _), ← add_rotate,
-        Nat.mul_comm, h₂, ← hd, ← h₁, Nat.div_add_mod', Nat.div_add_mod']
-  have h₄ : d * ulp a ≤ b / ulp a * ulp a := by
-    apply Nat.mul_le_mul_right
-    apply Nat.le_trans hdle
-    rw [Nat.one_le_div_iff (Trunc.ulp_pos _)]
-    exact ulp_le
-  rw [Round.Faithful.round_eq_trunc_of_le round_le, h₃]
-  apply Trunc.trunc_eq_of_le_of_ulp_dvd (a := b)
-  . apply Nat.le_trans
-    . exact Nat.add_le_add_right h₄ _
-    . exact Nat.le_of_eq (Nat.div_add_mod' _ _)
-  . apply Nat.dvd_add
-    . apply Nat.dvd_trans (b := ulp a)
-      . exact Trunc.ulp_dvd_ulp hba
-      . exact Nat.dvd_mul_left _ _
-    . rw [Nat.dvd_mod_iff (Trunc.ulp_dvd_ulp hba)]
-      exact Trunc.ulp_dvd_of_trunc_eq hfb
-
-theorem round_eq_trunc_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
-  (hfa : trunc a = a) (hba : b ≤ a)
-  (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ a.size ≤ a + b)
-  (lt_ulp : b < ulp (a + b)) :
-  round (a + b) = trunc (a + b) := by
+theorem le_size_and_ulp_eq_of_no_uflow_of_carry {a b : ℕ}
+  (hba : b ≤ a) (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ a.size ≤ a + b) :
+  n ≤ a.size ∧ ulp (a + b) = 2 * ulp a := by
   have size_eq : (a + b).size = a.size + 1 := by
     apply Nat.le_antisymm
     . rw [Nat.size_le, pow_succ, Nat.two_mul]
@@ -593,13 +513,76 @@ theorem round_eq_trunc_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
   have le_size : n ≤ a.size := by
     rw [← Nat.lt_succ, Nat.succ_eq_add_one, ← size_eq, Nat.lt_size]
     exact no_uflow
-  have size_ulp : 2 ^ a.size = 2 ^ n * ulp a := by
-    unfold ulp expt
-    rw [← pow_add, Nat.add_sub_cancel' le_size]
   have ulp_eq : ulp (a + b) = 2 * ulp a := by
     unfold ulp expt
     rw [← pow_succ, size_eq, Nat.sub_add_comm le_size]
-  have h₂ : a + b < 2 ^ a.size + ulp a := by
+  exact ⟨le_size, ulp_eq⟩
+
+theorem a1_lo_of_no_uflow_of_carry_of_round_le {a b : ℕ}
+  (hfa : trunc a = a) (hfb : trunc b = b) (hba : b ≤ a)
+  (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ Nat.size a ≤ a + b)
+  (round_le : round (a + b) ≤ a + b) :
+  trunc (a + b - round (a + b)) = a + b - round (a + b) := by
+  have ⟨le_size, ulp_eq⟩ := le_size_and_ulp_eq_of_no_uflow_of_carry hba no_uflow carry
+  have ulp_le : ulp a ≤ b := by
+    have k₀ : 2 ^ (Nat.size a + 1 - n) ∣ 2 ^ Nat.size a := by
+      rw [Nat.pow_dvd_pow_iff_le_right one_lt_two,
+          Nat.sub_add_comm le_size,
+          ← tsub_tsub_assoc le_size (Nat.one_le_of_lt n_pos)]
+      exact Nat.sub_le _ _
+    have k₁ : trunc (2 ^ a.size) = 2 ^ a.size := by
+      rw [trunc, sig, ulp, expt, Nat.size_pow, Nat.div_mul_cancel k₀]
+    apply Nat.le_of_add_le_add_left (a := a)
+    refine Nat.le_trans ?_ carry
+    rw [← next, ← Trunc.next_trunc_pred_eq_self Lemmas.two_pow_pos k₁]
+    apply Trunc.next_le_next
+    apply Nat.le_trans hfa.ge
+    apply Trunc.trunc_le_trunc
+    apply Nat.le_pred_of_lt
+    exact Nat.lt_size_self _
+  have h₁ : ulp a ∣ ulp (a + b) := Trunc.ulp_dvd_ulp (Nat.le_add_right _ _)
+  have h₂ : a + b - trunc (a + b) = (a + b) / ulp a * ulp a % ulp (a + b) + b % ulp a := by
+    have k₁ : b % ulp a = (a + b) % ulp a := by
+      rw [← Nat.mod_add_mod,
+          Nat.mod_eq_zero_of_dvd (Trunc.ulp_dvd_of_trunc_eq hfa), Nat.zero_add]
+    have k₂ : trunc (a + b) = (a + b) / ulp a * ulp a / ulp (a + b) * ulp (a + b) := by
+      rw [Lemmas.div_mul_div_cancel (Trunc.ulp_pos _) h₁, ← sig, ← trunc]
+    rw [tsub_eq_iff_eq_add_of_le (Trunc.trunc_le _), ← add_rotate,
+        k₁, k₂, Nat.div_add_mod', Nat.div_add_mod']
+  have h₃ : (a + b) / ulp a * ulp a % ulp (a + b) ≤ b / ulp a * ulp a := by
+    apply Nat.le_trans (m := ulp (a + b) - ulp a)
+    . apply Lemmas.le_sub_of_dvd_of_dvd_of_lt
+      . rw [Nat.dvd_mod_iff h₁]
+        exact Nat.dvd_mul_left _ _
+      . exact h₁
+      . exact Nat.mod_lt _ (Trunc.ulp_pos _)
+    . rw [ulp_eq, ← Nat.mul_pred_left, Nat.pred_succ]
+      apply Nat.mul_le_mul_right
+      rw [Nat.one_le_div_iff (Trunc.ulp_pos _)]
+      exact ulp_le
+  rw [Round.Faithful.round_eq_trunc_of_le round_le, h₂]
+  apply Trunc.trunc_eq_of_le_of_ulp_dvd (a := b)
+  . apply Nat.le_trans
+    . exact Nat.add_le_add_right h₃ _
+    . exact Nat.le_of_eq (Nat.div_add_mod' _ _)
+  . apply Nat.dvd_add
+    . apply Nat.dvd_trans (b := ulp a)
+      . exact Trunc.ulp_dvd_ulp hba
+      . rw [Nat.dvd_mod_iff h₁]
+        exact Nat.dvd_mul_left _ _
+    . rw [Nat.dvd_mod_iff (Trunc.ulp_dvd_ulp hba)]
+      exact Trunc.ulp_dvd_of_trunc_eq hfb
+
+theorem round_le_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
+  (hfa : trunc a = a) (hba : b ≤ a)
+  (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ a.size ≤ a + b)
+  (lt_ulp : b < ulp (a + b)) :
+  round (a + b) ≤ a + b := by
+  have ⟨le_size, ulp_eq⟩ :=
+    le_size_and_ulp_eq_of_no_uflow_of_carry hba no_uflow carry
+  have size_ulp : 2 ^ a.size = 2 ^ n * ulp a := by
+    rw [ulp, expt, ← pow_add, Nat.add_sub_cancel' le_size]
+  have h₁ : a + b < 2 ^ a.size + ulp a := by
     have le_ulp : a ≤ 2 ^ a.size - ulp a := by
       apply Lemmas.le_sub_of_dvd_of_dvd_of_lt
       . exact Trunc.ulp_dvd_of_trunc_eq hfa
@@ -611,37 +594,28 @@ theorem round_eq_trunc_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
       exact Nat.le_mul_of_pos_left Lemmas.two_pow_pos
     rw [← Nat.sub_add_cancel hle₁, Nat.add_assoc, ← Nat.two_mul, ← ulp_eq]
     exact add_lt_add_of_le_of_lt le_ulp lt_ulp
-  have h₃ : (a + b) / ulp a * ulp a = 2 ^ a.size := by
+  have h₂ : (a + b) / ulp a * ulp a = 2 ^ a.size := by
     rw [size_ulp]
     apply congr_arg (fun w => w * ulp a)
     apply Nat.le_antisymm
     . rw [Nat.div_le_iff_le_mul_add_pred (Trunc.ulp_pos a), Nat.mul_comm,
           ← size_ulp, ← Nat.add_sub_assoc (Nat.one_le_of_lt (Trunc.ulp_pos a))]
-      exact Nat.le_pred_of_lt h₂
+      exact Nat.le_pred_of_lt h₁
     . rw [← Nat.mul_div_cancel (2 ^ n) (Trunc.ulp_pos a), ← size_ulp]
       exact Nat.div_le_div_right carry
-  have h₄ : 2 ∣ (a + b) / ulp a := by
-    rw [← Nat.mul_div_cancel ((a + b) / ulp a) (Trunc.ulp_pos a), h₃, size_ulp,
+  have h₃ : 2 ∣ (a + b) / ulp a := by
+    rw [← Nat.mul_div_cancel ((a + b) / ulp a) (Trunc.ulp_pos a), h₂, size_ulp,
         Nat.mul_div_cancel _ (Trunc.ulp_pos a)]
     exact Nat.dvd_of_pow_dvd (Nat.one_le_of_lt n_pos) dvd_rfl
-  have h₅ : trunc (a + b) = 2 ^ a.size := by
-    unfold trunc sig
-    rw [ulp_eq, Nat.mul_comm 2, ← Nat.div_div_eq_div_mul, ← Nat.mul_comm 2,
-        ← Nat.mul_assoc, Nat.div_mul_cancel h₄]
-    exact h₃
-  have h₆ : a + b < trunc (a + b) + ulp (a + b) / 2 := by
-    rw [h₅, ulp_eq, Nat.mul_comm, Nat.mul_div_cancel _ two_pos]
+  have h₄ : trunc (a + b) = 2 ^ a.size := by
+    rw [trunc, sig, ulp_eq, Nat.mul_comm 2, ← Nat.div_div_eq_div_mul,
+        ← Nat.mul_comm 2, ← Nat.mul_assoc, Nat.div_mul_cancel h₃]
     exact h₂
-  exact Round.Correct.a2'' h₆
-
-theorem round_le_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
-  (hfa : trunc a = a) (hba : b ≤ a)
-  (no_uflow : a + b ≥ 2 ^ n) (carry : a + b ≥ 2 ^ Nat.size a)
-  (lt_ulp : b < ulp (a + b)) :
-  round (a + b) ≤ a + b := by
-  have round_eq_trunc : round (a + b) = trunc (a + b) :=
-    round_eq_trunc_of_no_uflow_of_carry_of_lt_ulp hfa hba no_uflow carry lt_ulp
-  exact round_eq_trunc ▸ (Trunc.trunc_le _)
+  have h₅ : a + b < trunc (a + b) + ulp (a + b) / 2 := by
+    rw [h₄, ulp_eq, Nat.mul_comm, Nat.mul_div_cancel _ two_pos]
+    exact h₁
+  rw [Round.Correct.a2'' h₅]
+  exact (Trunc.trunc_le _)
 
 theorem a1' {a b : ℕ}
   (hfa : trunc a = a) (hfb : trunc b = b) (hba : b ≤ a) :
