@@ -83,17 +83,17 @@ theorem s1' {a b : ℕ}
     Trunc.trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq hb_pos hf₁
   rw [h₁, Nat.sub.right_comm, Trunc.trunc_eq_iff_ulp_dvd]
   apply Nat.dvd_sub'
-  . apply dvd_trans (b := ulp (b - a))
-    . apply Trunc.ulp_dvd_ulp
-      exact Nat.sub_le _ _
-    . rw [← Trunc.trunc_eq_iff_ulp_dvd]
-      exact hf₂
+  . calc
+      ulp (b - a - ulp (b - 1))
+        ∣ ulp (b - a)         := Trunc.ulp_dvd_ulp (Nat.sub_le _ _)
+      _ ∣ trunc (b - a)       := Trunc.ulp_dvd_trunc _
+      _ = b - a               := hf₂
   . apply Trunc.ulp_dvd_ulp
-    rw [Nat.sub.right_comm]
-    apply Nat.le_trans (m := b - ulp (b - 1))
-    . exact Nat.sub_le _ _
-    . apply Nat.sub_le_sub_left
-      exact Trunc.ulp_pos _
+    calc
+      b - a - ulp (b - 1)
+        = b - ulp (b - 1) - a := by rw [Nat.sub.right_comm]
+      _ ≤ b - ulp (b - 1)     := Nat.sub_le _ _
+      _ ≤ b - 1 := Nat.sub_le_sub_left _ (Nat.one_le_of_lt (Trunc.ulp_pos _))
 
 -- S1 : If 0 ≤ a ≤ c ≤ b and fl (b - a) = b - a exactly
 --      then fl (c - a) = c - a  exactly (and similarly if 0 ≥ a ≥ b)
@@ -112,16 +112,12 @@ theorem s1 {a b c : ℕ} (hac : a ≤ c) (hcb : c ≤ b)
     | succ k ih =>
       rw [Nat.sub_succ']
       intro (hb₂a : 2 * a < b - k - 1)
-      have hb₁a : 2 * a < b - k := by
-        apply Nat.lt_of_lt_of_le (m := b - k - 1)
-        . exact hb₂a
-        . exact Nat.sub_le _ _
+      have hb₁a : 2 * a < b - k := Nat.lt_of_lt_of_le hb₂a (Nat.sub_le _ _)
       replace ih := ih hb₁a
       cases eq_or_ne (trunc (b - k)) (b - k) with
       | inr ne =>
-        have eq : trunc (b - k - 1) = trunc (b - k) :=
-          Trunc.trunc_pred_eq_trunc_of_trunc_ne_self ne
-        exact eq ▸ ih
+        rw [Trunc.trunc_pred_eq_trunc_of_trunc_ne_self ne]
+        exact ih
       | inl hfb₁ =>
         rw [hfb₁] at ih
         exact s1' hfb₁ ih hb₁a
@@ -137,30 +133,28 @@ theorem s1 {a b c : ℕ} (hac : a ≤ c) (hcb : c ≤ b)
 theorem s2 {a b : ℕ} (hab : a ≤ b)
   (hfa : trunc a = a) (hfb : trunc b = b) :
   trunc (b - round (b - a)) = b - round (b - a) := by
-  cases Nat.lt_or_ge (2 * a) b with
-  | inr hba => -- ge : 2 * a ≥ b
+  cases Nat.le_total (2 * a) b with
+  | inr hba' => -- hba' : 2 * a ≥ b
     have hf : round (b - a) = b - a := by
       apply Round.Faithful.a0
-      exact sterbenz hab hba hfb hfa
+      exact sterbenz hab hba' hfb hfa
     rw [hf, Nat.sub_sub_self hab]
     exact hfa
-  | inl hab' => -- lt : 2 * a < b
+  | inl hab' => -- hab' : 2 * a < b
     apply sterbenz
-    . apply Nat.le_trans (m := trunc b)
-      . apply Round.Faithful.round_le_trunc_of_le_trunc
-        rw [hfb]
-        exact Nat.sub_le _ _
-      . exact Trunc.trunc_le _
-    . apply Nat.le_trans (m := 2 * trunc (b - a))
-      . rw [← pow_one 2, ← Trunc.trunc_pow_mul, pow_one]
-        apply Nat.le_trans (m := trunc b)
-        . rw [hfb]
-        . apply Trunc.trunc_le_trunc
-          rw [Nat.mul_sub_left_distrib, Nat.two_mul,
-              Nat.add_sub_assoc (le_of_lt hab')]
-          exact Nat.le_add_right _ _
-      . apply Nat.mul_le_mul_left
-        exact Round.Faithful.trunc_le_round _
+    . calc
+        round (b - a)
+          = round (trunc b - a) := by rw [hfb]
+        _ ≤ trunc b := Round.Faithful.round_le_trunc_of_le_trunc (Nat.sub_le _ _)
+        _ ≤ b       := Trunc.trunc_le _
+    . calc
+        b = trunc b             := by rw [hfb]
+        _ ≤ trunc (2 * (b - a)) := by {
+          rw [Nat.mul_sub_left_distrib, Nat.two_mul, Nat.add_sub_assoc hab']
+          exact Trunc.trunc_le_trunc (Nat.le_add_right _ _)
+        }
+        _ = 2 * trunc (b - a) := by rw [← pow_one 2, ← Trunc.trunc_pow_mul, pow_one]
+        _ ≤ 2 * round (b - a) := Nat.mul_le_mul_left _ (Round.Faithful.trunc_le_round _)
     . exact hfb
     . exact Round.Faithful.trunc_round_eq_round _
 
@@ -175,28 +169,25 @@ theorem s2' {a b : ℕ} (hab : a ≤ b)
 -- Then b - b' ≤ 2 * a.
 theorem s3' {a b : ℕ} (hfb : trunc b = b) (h : ulp b ≤ 2 * a) :
   b - trunc (b - a) ≤ 2 * a := by
-  cases Nat.lt_or_ge a (ulp b) with
-  | inl lt_ulp =>
-    apply Nat.le_trans (m := ulp b)
-    . rw [tsub_le_iff_tsub_le]
-      rw [← Trunc.trunc_sub_ulp_eq_of_trunc_eq hfb]
-      apply Trunc.trunc_le_trunc
-      exact Nat.sub_le_sub_left _ (Nat.le_of_lt lt_ulp)
-    . exact h
+  cases Nat.le_total a (ulp b) with
+  | inl le_ulp =>
+    refine Nat.le_trans ?_ h
+    rw [tsub_le_iff_tsub_le]
+    calc
+      b - ulp b
+        = trunc (b - ulp b) := Eq.symm $ Trunc.trunc_sub_ulp_eq_of_trunc_eq hfb
+      _ ≤ trunc (b - a) := Trunc.trunc_le_trunc (Nat.sub_le_sub_left _ le_ulp)
   | inr ulp_le =>
-    apply Nat.le_trans (m := a + ulp b)
-    . apply Nat.le_add_of_sub_le
-      rw [Nat.sub_sub]
-      rw [tsub_le_iff_tsub_le]
-      apply Nat.le_trans (m := trunc (b - a) + ulp (b - a))
-      . rw [← Trunc.ulp_trunc_eq_ulp]
-        exact Nat.le_of_lt (Trunc.lt_next_trunc _)
-      . apply Nat.add_le_add_left
-        apply Trunc.ulp_le_ulp
-        exact Nat.sub_le _ _
-    . rw [Nat.two_mul]
-      apply Nat.add_le_add_left
-      exact ulp_le
+    calc
+      b - trunc (b - a) ≤ ulp b + a := by {
+        rw [tsub_le_iff_left, ← Nat.add_assoc, ← tsub_le_iff_right]
+        calc b - a
+            ≤ trunc (b - a) + ulp (trunc (b - a)) := Nat.le_of_lt $ Trunc.lt_next_trunc _
+          _ = trunc (b - a) + ulp (b - a)         := by rw [Trunc.ulp_trunc_eq_ulp _]
+          _ ≤ trunc (b - a) + ulp b := Nat.add_le_add_left (Trunc.ulp_le_ulp (Nat.sub_le _ _)) _
+      }
+      _ ≤ a + a := Nat.add_le_add_right ulp_le a
+      _ = 2 * a := Eq.symm $ Nat.two_mul _
 
 -- S3 : If 0 ≤ ulp (b) / 2 ≤ a ≤ b and c = fl (b - fl (b - a) satisfies c > a
 --      then fl (c - d) = c - d exactly for all d ∈ [a, c] (and similarly if
@@ -210,14 +201,14 @@ theorem s3 {a b d : ℕ}
   have hfc : round (b - round (b - a)) = b - round (b - a) := by
     rw [← Round.Faithful.trunc_eq_iff_round_eq]
     exact s2 hab hfa hfb
-  have helo : round (b - a) < b - a := by
+  have helo : round (b - a) = trunc (b - a) := by
+    apply Round.Faithful.round_eq_trunc_of_le
+    apply Nat.le_of_lt
     rw [lt_tsub_comm, ← hfc]
     exact hac
   have hcd : round (b - round (b - a)) ≤ 2 * d := by
-    have hfe : round (b - a) = trunc (b - a) :=
-      Round.Faithful.round_eq_trunc_of_le (Nat.le_of_lt helo)
-    apply Nat.le_trans (m := 2 * a)
-    . rw [hfc, hfe]
+    trans 2 * a
+    . rw [hfc, helo]
       exact s3' hfb hba
     . exact Nat.mul_le_mul_left 2 had
   apply sterbenz
@@ -320,11 +311,12 @@ theorem interval_shift₂ {x y z w s t : ℕ}
   have hft : trunc t = t := ht.symm ▸ Round.Faithful.trunc_round_eq_round _
   have hty' : round (x - y) ≤ round (x - t) := hm₂ hft hfy hfx hty
   have hfy' : round (x - round (x - y)) = x - round (x - y) := s2' hyx hfy hfx
-  have hsy' : s ≤ round (x - round (x - y)) := calc
-    s = round (x - round (x - t)) := hs
-    _ = x - round (x - t)         := s2' htx hft hfx
-    _ ≤ x - round (x - y)         := Nat.sub_le_sub_left _ hty'
-    _ = round (x - round (x - y)) := hfy'.symm
+  have hsy' : s ≤ round (x - round (x - y)) :=
+    calc
+      s = round (x - round (x - t)) := hs
+      _ = x - round (x - t)         := s2' htx hft hfx
+      _ ≤ x - round (x - y)         := Nat.sub_le_sub_left _ hty'
+      _ = round (x - round (x - y)) := hfy'.symm
   have hfsx : trunc (x - s) = x - s := by
     rw [hs]
     apply s2
@@ -415,12 +407,12 @@ theorem a1_hi_of_lt_round_of_ulp_sub_le {a b : ℕ}
   . apply Nat.dvd_sub'
     . rw [next, Trunc.ulp_trunc_eq_ulp _]
       apply Nat.dvd_add
-      . apply Nat.dvd_trans (b := ulp (a + b))
+      . trans ulp (a + b)
         . exact Trunc.ulp_dvd_ulp (Nat.le_add_left _ _)
         . exact Trunc.ulp_dvd_trunc _
       . exact Trunc.ulp_dvd_ulp (Nat.le_add_left _ _)
     . apply Nat.dvd_add
-      . apply Nat.dvd_trans (b := ulp a)
+      . trans ulp a
         . exact Trunc.ulp_dvd_ulp hba
         . exact Trunc.ulp_dvd_of_trunc_eq hfa
       . exact Trunc.ulp_dvd_of_trunc_eq hfb
@@ -442,12 +434,13 @@ theorem a1_hi_of_no_uflow_of_no_carry_of_lt_round {a b : ℕ}
     rw [← ulp_eq, hd]
     apply Nat.mul_le_mul_left
     apply Nat.le_of_add_le_add_left (a := a)
-    apply Nat.le_trans (m := trunc (a + b) + ulp (a + b) / 2)
+    trans trunc (a + b) + ulp (a + b) / 2
     . rw [hd, Nat.mul_comm, Nat.mul_div_cancel _ two_pos]
       apply Nat.add_le_add_right
-      apply Nat.le_trans hfa.ge
-      apply Trunc.trunc_le_trunc
-      exact Nat.le_add_right _ _
+      trans trunc a
+      . exact hfa.ge
+      . apply Trunc.trunc_le_trunc
+        exact Nat.le_add_right _ _
     . apply Round.Correct.a3'''
       exact Round.Faithful.round_eq_next_trunc_of_gt lt_round
   apply a1_hi_of_lt_round_of_ulp_sub_le hfa hfb hba lt_round
@@ -506,11 +499,18 @@ theorem le_size_and_ulp_eq_of_no_uflow_of_carry {a b : ℕ}
     . rw [Nat.succ_le, Nat.lt_size]
       exact carry
   have le_size : n ≤ a.size := by
-    rw [← Nat.lt_succ, Nat.succ_eq_add_one, ← size_eq, Nat.lt_size]
-    exact no_uflow
+    rw [← Nat.lt_succ, Nat.succ_eq_add_one]
+    calc
+      n < (a + b).size := Nat.lt_size.mpr no_uflow
+      _ = a.size + 1   := size_eq
   have ulp_eq : ulp (a + b) = 2 * ulp a := by
-    unfold ulp expt
-    rw [← pow_succ, size_eq, Nat.sub_add_comm le_size]
+    calc
+      ulp (a + b)
+        = 2 ^ ((a + b).size - n) := rfl
+      _ = 2 ^ (a.size + 1 - n)   := by rw [size_eq]
+      _ = 2 ^ (a.size - n + 1)   := by rw [Nat.sub_add_comm le_size]
+      _ = 2 * 2 ^ (a.size - n)   := by rw [pow_succ]
+      _ = 2 * ulp a              := rfl
   exact ⟨le_size, ulp_eq⟩
 
 theorem a1_lo_of_no_uflow_of_carry_of_round_le {a b : ℕ}
@@ -545,7 +545,7 @@ theorem a1_lo_of_no_uflow_of_carry_of_round_le {a b : ℕ}
     rw [tsub_eq_iff_eq_add_of_le (Trunc.trunc_le _), ← add_rotate,
         k₁, k₂, Nat.div_add_mod', Nat.div_add_mod']
   have h₃ : (a + b) / ulp a * ulp a % ulp (a + b) ≤ b / ulp a * ulp a := by
-    apply Nat.le_trans (m := ulp (a + b) - ulp a)
+    trans ulp (a + b) - ulp a
     . apply Lemmas.le_sub_of_dvd_of_dvd_of_lt
       . rw [Nat.dvd_mod_iff h₁]
         exact Nat.dvd_mul_left _ _
@@ -557,11 +557,10 @@ theorem a1_lo_of_no_uflow_of_carry_of_round_le {a b : ℕ}
       exact ulp_le
   rw [Round.Faithful.round_eq_trunc_of_le round_le, h₂]
   apply Trunc.trunc_eq_of_le_of_ulp_dvd (a := b)
-  . apply Nat.le_trans
-    . exact Nat.add_le_add_right h₃ _
-    . exact Nat.le_of_eq (Nat.div_add_mod' _ _)
+  . conv => rhs; rw [← Nat.div_add_mod' b (ulp a)]
+    exact Nat.add_le_add_right h₃ (b % ulp a)
   . apply Nat.dvd_add
-    . apply Nat.dvd_trans (b := ulp a)
+    . trans ulp a
       . exact Trunc.ulp_dvd_ulp hba
       . rw [Nat.dvd_mod_iff h₁]
         exact Nat.dvd_mul_left _ _
@@ -572,7 +571,7 @@ theorem round_le_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
   (hfa : trunc a = a) (hba : b ≤ a)
   (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ a.size ≤ a + b)
   (lt_ulp : b < ulp (a + b)) :
-  round (a + b) ≤ a + b := by
+  round (a + b) ≤ a + b :=
   have ⟨le_size, ulp_eq⟩ :=
     le_size_and_ulp_eq_of_no_uflow_of_carry hba no_uflow carry
   have size_ulp : 2 ^ a.size = 2 ^ n * ulp a := by
@@ -587,30 +586,44 @@ theorem round_le_of_no_uflow_of_carry_of_lt_ulp {a b : ℕ}
     have hle₁ : ulp a ≤ 2 ^ a.size := by
       rw [size_ulp]
       exact Nat.le_mul_of_pos_left Lemmas.two_pow_pos
-    rw [← Nat.sub_add_cancel hle₁, Nat.add_assoc, ← Nat.two_mul, ← ulp_eq]
-    exact add_lt_add_of_le_of_lt le_ulp lt_ulp
+    calc
+      a + b < 2 ^ a.size - ulp a + ulp (a + b)   := add_lt_add_of_le_of_lt le_ulp lt_ulp
+      _ = 2 ^ a.size - ulp a + ulp a + ulp a := by rw [ulp_eq, Nat.two_mul, ← Nat.add_assoc]
+      _ = 2 ^ a.size + ulp a                 := by rw [Nat.sub_add_cancel hle₁]
   have h₂ : (a + b) / ulp a * ulp a = 2 ^ a.size := by
     rw [size_ulp]
     apply congr_arg (fun w => w * ulp a)
     apply Nat.le_antisymm
-    . rw [Nat.div_le_iff_le_mul_add_pred (Trunc.ulp_pos a), Nat.mul_comm,
-          ← size_ulp, ← Nat.add_sub_assoc (Nat.one_le_of_lt (Trunc.ulp_pos a))]
-      exact Nat.le_pred_of_lt h₁
-    . rw [← Nat.mul_div_cancel (2 ^ n) (Trunc.ulp_pos a), ← size_ulp]
-      exact Nat.div_le_div_right carry
-  have h₃ : 2 ∣ (a + b) / ulp a := by
-    rw [← Nat.mul_div_cancel ((a + b) / ulp a) (Trunc.ulp_pos a), h₂, size_ulp,
-        Nat.mul_div_cancel _ (Trunc.ulp_pos a)]
-    exact Nat.dvd_of_pow_dvd (Nat.one_le_of_lt n_pos) dvd_rfl
-  have h₄ : trunc (a + b) = 2 ^ a.size := by
-    rw [trunc, sig, ulp_eq, Nat.mul_comm 2, ← Nat.div_div_eq_div_mul,
-        ← Nat.mul_comm 2, ← Nat.mul_assoc, Nat.div_mul_cancel h₃]
-    exact h₂
+    . rw [Nat.div_le_iff_le_mul_add_pred (Trunc.ulp_pos a)]
+      calc
+        a + b ≤ 2 ^ a.size + ulp a - 1    := Nat.le_pred_of_lt h₁
+        _ = 2 ^ a.size + (ulp a - 1)      := by rw [Nat.add_sub_assoc (Nat.one_le_of_lt (Trunc.ulp_pos a))]
+        _ = ulp a * 2 ^ n + (ulp a - 1)   := by rw [size_ulp, Nat.mul_comm]
+    . calc
+        2 ^ n = 2 ^ Nat.size a / ulp a    := Eq.symm $ Nat.div_eq_of_eq_mul_left (Trunc.ulp_pos _) size_ulp
+        _ ≤ (a + b) / ulp a               := Nat.div_le_div_right carry
+   have h₃ := calc
+      2 ∣ 2 ^ n                                  := Nat.dvd_of_pow_dvd (Nat.one_le_of_lt n_pos) dvd_rfl
+      _ = 2 ^ n * ulp a / ulp a                  := Eq.symm $ Nat.mul_div_cancel _ (Trunc.ulp_pos a)
+      _ = 2 ^ a.size / ulp a                     := by rw [size_ulp]
+      _ = (a + b) / ulp a * ulp a / ulp a        := by rw [h₂]
+      _ = (a + b) / ulp a                        := Nat.mul_div_cancel _ (Trunc.ulp_pos a)
+  have h₄ := calc
+      trunc (a + b)
+        = (a + b) / ulp (a + b) * ulp (a + b)    := rfl
+      _ = (a + b) / (2 * ulp a) * (2 * ulp a)    := by rw [ulp_eq]
+      _ = (a + b) / ulp a / 2 * 2 * ulp a        := by rw [Nat.mul_assoc, Nat.mul_comm 2, Nat.div_div_eq_div_mul]
+      _ = (a + b) / ulp a * ulp a                := by rw [Nat.div_mul_cancel h₃]
+      _ = 2 ^ a.size                             := h₂
   have h₅ : a + b < trunc (a + b) + ulp (a + b) / 2 := by
-    rw [h₄, ulp_eq, Nat.mul_comm, Nat.mul_div_cancel _ two_pos]
-    exact h₁
-  rw [Round.Correct.a2'' h₅]
-  exact (Trunc.trunc_le _)
+    calc
+      a + b
+        < 2 ^ a.size + ulp a                     := h₁
+      _ = trunc (a + b) + ulp a                  := by rw [h₄]
+      _ = trunc (a + b) + ulp (a + b) / 2        := by rw [ulp_eq, Nat.mul_comm, Nat.mul_div_cancel _ two_pos]
+  calc
+    round (a + b) = trunc (a + b)                := Round.Correct.a2'' h₅
+    _ ≤ a + b                                    := Trunc.trunc_le _
 
 theorem a1' {a b : ℕ}
   (hfa : trunc a = a) (hfb : trunc b = b) (hba : b ≤ a) :
@@ -639,6 +652,9 @@ theorem a1' {a b : ℕ}
         | inl no_carry => exact a1_lo_of_no_carry_of_round_le hfa hfb hba no_carry round_le
         | inr carry => exact a1_lo_of_no_uflow_of_carry_of_round_le hfa hfb hba no_uflow carry round_le
       . exact a1_hi_of_round_le round_le
+
+-- Property A1: The roundoff error of a floating point sum is itself a floating
+-- point number.
 
 theorem a1 {a b : ℕ}
   (hfa : trunc a = a) (hfb : trunc b = b) :

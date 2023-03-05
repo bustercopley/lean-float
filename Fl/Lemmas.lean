@@ -1,6 +1,6 @@
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Size
-import Mathlib.Algebra.Order.Monoid.WithTop
+import Mathlib.Data.Nat.Order.Lemmas
 
 namespace Fl.Lemmas
 
@@ -26,6 +26,27 @@ theorem eq_zero_of_le_sub {n m : ℕ} (k : 0 < m) (h : n ≤ n - m) : n = 0 := b
   rw [← not_imp_not, not_le]
   intro h
   exact Nat.sub_lt (Nat.zero_lt_of_ne_zero h) k
+
+theorem le_of_le_of_sub_le_sub_left {m n k : Nat}
+  (h₁ : n ≤ k) (h₂ : k - m ≤ k - n) : n ≤ m := by
+  rw [← Nat.sub_sub_self h₁, tsub_le_iff_left, ← tsub_le_iff_right]
+  exact h₂
+
+theorem le_of_lt_of_sub_le_sub_left {m n k : Nat}
+  (h₁ : m < k) (h₂ : k - m ≤ k - n) : n ≤ m := by
+  cases lt_or_ge k n with
+  | inl hkn =>
+    exfalso
+    apply Nat.lt_le_antisymm h₁
+    apply Nat.le_of_sub_eq_zero
+    apply Nat.eq_zero_of_le_zero
+    trans k - n
+    . exact h₂
+    . apply Nat.le_of_eq
+      apply Nat.sub_eq_zero_of_le
+      apply Nat.le_of_lt
+      exact hkn
+  | inr hnk => exact le_of_le_of_sub_le_sub_left hnk h₂
 
 theorem div_mul_div_cancel {n m k : ℕ} (h₁ : 0 < k) (h₂ : k ∣ m) :
   n / k * k / m = n / m := by
@@ -74,19 +95,6 @@ theorem sub_half_of_even {x : ℕ} (d : 2 ∣ x) : x - x / 2 = x / 2 := by
   rw [(rfl : 2 = 2)]
   rw [Nat.pred_succ, mul_one]
 
-theorem lt_of_mul_lt_mul_right {x y : ℕ} (k : ℕ) (h : x * k < y * k) :
-  x < y := by
-  cases Nat.lt_or_ge x y with
-  | inl hxy => exact hxy
-  | inr hyx =>
-    exfalso
-    apply Nat.lt_le_antisymm h (Nat.mul_le_mul_right k hyx)
-
-theorem lt_of_mul_lt_mul_left {x y : ℕ} (k : ℕ) (h : k * x < k * y) :
-  x < y := by
-  rw [Nat.mul_comm k, Nat.mul_comm k] at h
-  exact lt_of_mul_lt_mul_right k h
-
 theorem lt_of_size_lt_size {x y : ℕ} (h : x.size < y.size) : x < y := by
   cases Nat.lt_or_ge x y with
   | inl hxy => exact hxy
@@ -104,7 +112,7 @@ theorem le_sub_of_dvd_of_dvd_of_lt {n m k : ℕ}
   rw [hd, he, ← Nat.mul_pred_right, ← Nat.sub_one]
   apply Nat.mul_le_mul_left
   rw [← Nat.lt_iff_le_pred h₀.right]
-  apply lt_of_mul_lt_mul_left k
+  refine lt_of_mul_lt_mul_left ?_ (Nat.zero_le k)
   rw [← hd, ← he]
   exact h₃
 
@@ -129,7 +137,7 @@ theorem div_mul_pred_eq_sub_of_pos_of_dvd {a b : ℕ}
         ← Nat.add_div_right _ h₀,
         ← Nat.sub_add_comm (Nat.one_le_of_lt h₂),
         Nat.add_sub_assoc (Nat.one_le_of_lt h₀)]
-    transitivity b / a * a
+    trans b / a * a
     . rw [Nat.div_mul_cancel h₁]
     . apply Nat.mul_le_mul_right
       apply Nat.div_le_div_right
@@ -175,8 +183,8 @@ theorem pred_size_le_size_pred {a : ℕ} (h : 0 < a) :
   cases le_or_gt 2 a with
   | inl two_le =>
   . have h' : 2 ^ (a.size - 1 - 1) ≤ a := by
-      transitivity 2 ^ (a.size - 1)
-      . apply pow_le_pow one_le_two
+      trans 2 ^ (a.size - 1)
+      . apply Nat.pow_le_pow_of_le_right two_pos
         exact Nat.sub_le _ _
       . exact le_size_of_pos h
     have one_lt_size : 1 < a.size := Nat.lt_size.mpr two_le
@@ -184,7 +192,7 @@ theorem pred_size_le_size_pred {a : ℕ} (h : 0 < a) :
     apply Nat.le_of_pred_lt
     rw [Nat.pred_eq_sub_one]
     rw [Nat.lt_size]
-    transitivity a - 2 ^ (Nat.size a - 1 - 1)
+    trans a - 2 ^ (Nat.size a - 1 - 1)
     . rw [Nat.le_sub_iff_add_le h']
       rw [← two_mul, ← pow_succ]
       rw [← Nat.lt_size]
@@ -270,18 +278,28 @@ theorem size_div_pow {x m : ℕ} (h : 2 ^ m ≤ x) :
     exact range.right
 
 theorem size_div_mul {x m : ℕ} (h : 2 ^ m ≤ x) :
-  Nat.size (x / 2 ^ m * 2 ^ m) = Nat.size x := by
+  (x / 2 ^ m * 2 ^ m).size = x.size := by
   have div_pow_pos : 0 < x / 2 ^ m := Nat.div_pos h two_pow_pos
-  rw [size_mul_pow div_pow_pos m]
-  rw [size_div_pow h]
+  rewrite [size_mul_pow div_pow_pos m]
+  rewrite [size_div_pow h]
   -- ⊢ x.size - m + m = x.size
   apply Nat.sub_add_cancel
+  -- ⊢ m ≤ x.size
   apply Nat.le_of_pred_lt
-  rw [Nat.lt_size]
+  rewrite [Nat.lt_size]
   -- ⊢ 2 ^ m.pred ≤ x
-  transitivity 2 ^ m
+  trans 2 ^ m
   . apply Nat.pow_le_pow_of_le_right two_pos
     exact Nat.pred_le m
   . exact h
+
+theorem tsub_tsub_assoc' {a b c : ℕ} (h₁ : b ≤ c + a) (h₂ : c ≤ b)
+: a - (b - c) = a + c - b := by
+  apply tsub_eq_of_eq_add
+  rewrite [← add_tsub_assoc_of_le h₂]
+  rewrite [Nat.add_comm a c]
+  rewrite [tsub_add_cancel_of_le h₁]
+  rewrite [Nat.add_comm c a]
+  rw [add_tsub_cancel_right]
 
 end Fl.Lemmas

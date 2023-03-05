@@ -1,7 +1,6 @@
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Size
 import Mathlib.Data.Nat.Order.Lemmas
-import Mathlib.Algebra.Order.Monoid.WithTop
 
 import Fl.Lemmas
 import Fl.Trunc
@@ -62,15 +61,13 @@ theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
 theorem round_le_next_trunc (x : ℕ) : round x ≤ next (trunc x) :=
   Or.elim (a1 x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
 
-theorem round_idempotent (x : ℕ) : round (round x) = round x := by
-  cases a1 x with
-  | inl lo => rw [← trunc_eq_iff_round_eq, lo, Trunc.trunc_idempotent]
-  | inr hi => rw [← trunc_eq_iff_round_eq, hi, Trunc.trunc_next_comm,
-                  Trunc.trunc_idempotent]
-
 theorem trunc_round_eq_round (x : ℕ) : trunc (round x) = round (x) := by
-  rw [trunc_eq_iff_round_eq]
-  exact round_idempotent x
+  cases a1 x with
+  | inl lo => rw [lo, Trunc.trunc_idempotent]
+  | inr hi => rw [hi, Trunc.trunc_next_comm, Trunc.trunc_idempotent]
+
+theorem round_idempotent (x : ℕ) : round (round x) = round x := by
+  rw [← trunc_eq_iff_round_eq, trunc_round_eq_round]
 
 theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
   cases a1 a with
@@ -98,18 +95,19 @@ theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
   cases Nat.lt_or_eq_of_le h with
   | inl lt => -- lt : y < trunc x
     have pos := Nat.zero_lt_of_lt lt
-    rw [← Trunc.next_trunc_pred_eq_self' pos]
-    apply Nat.le_trans (round_le_next_trunc y)
-    apply Trunc.next_le_next
-    apply Trunc.trunc_le_trunc
-    apply Nat.le_pred_of_lt
-    exact lt
+    rewrite [← Trunc.next_trunc_pred_eq_self' pos]
+    apply Nat.le_trans
+    . exact round_le_next_trunc y
+    . apply Trunc.next_le_next
+      apply Trunc.trunc_le_trunc
+      apply Nat.le_pred_of_lt
+      exact lt
   | inr eq => -- eq : y = trunc x
     rw [eq, round_trunc_eq_trunc]
 
 theorem round_sub_le_of_trunc_eq (a : ℕ) {b : ℕ} (h : trunc b = b) :
   round (b - a) ≤ b := by
-  apply Nat.le_trans (m := trunc b)
+  trans trunc b
   . apply Round.Faithful.round_le_trunc_of_le_trunc
     exact Nat.le_trans (Nat.sub_le _ _) h.ge
   . exact Trunc.trunc_le _
@@ -276,7 +274,7 @@ theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
       have ulp_eq : ulp b = ulp a := by
         rw [← Trunc.ulp_trunc_eq_ulp a, ← Trunc.ulp_trunc_eq_ulp b, trunc_eq]
       apply Nat.lt_le_antisymm (lt_of_le_of_ne hle ne)
-      apply Nat.le_trans (m := trunc b + ulp b / 2)
+      trans trunc b + ulp b / 2
       . exact a2''' blo
       . rw [trunc_eq, ulp_eq]
         exact a3''' ahi

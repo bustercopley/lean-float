@@ -1,9 +1,6 @@
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Size
 import Mathlib.Data.Nat.Order.Lemmas
-import Mathlib.Algebra.Order.Monoid.WithTop
-
-import Mathlib.Tactic.LibrarySearch
 
 import Fl.Lemmas
 
@@ -53,8 +50,8 @@ theorem ulp_pos (x : ℕ) : 0 < ulp x := Fl.Lemmas.two_pow_pos
 
 theorem ulp_le {a : ℕ} (h : 0 < a) : ulp a ≤ a := by
   unfold ulp expt
-  transitivity 2 ^ (a.size - 1)
-  . exact pow_le_pow one_le_two (Nat.sub_le_sub_left a.size n_pos)
+  trans 2 ^ (a.size - 1)
+  . exact Nat.pow_le_pow_of_le_right two_pos (Nat.sub_le_sub_left a.size n_pos)
   . exact Fl.Lemmas.le_size_of_pos h
 
 theorem ulp_le_trunc {a : ℕ} (h : 0 < a) : ulp a ≤ trunc a := by
@@ -161,7 +158,7 @@ theorem trunc_next_of_ge_size {x : ℕ} (h : 2 ^ x.size ≤ next x) :
   have h₁ : expt (next x) ≤ x.size := by
     unfold expt
     rw [size_next_eq_succ_size_of_ge h]
-    transitivity x.size + 1 - 1
+    trans x.size + 1 - 1
     . exact Nat.sub_le_sub_left (x.size + 1) n_pos
     . rw [Nat.add_sub_cancel]
   have h₃ : next x < 2 ^ x.size + 2 ^ expt (next x) := by
@@ -242,7 +239,7 @@ theorem trunc_eq_trunc_of_trunc_le_of_lt_next_trunc {x y : ℕ}
       exact h
     . rw [ulp_trunc_eq_ulp x]
       unfold ulp expt
-      apply pow_le_pow one_le_two
+      apply Nat.pow_le_pow_of_le_right two_pos
       apply Nat.sub_le_sub_right
       rw [Nat.size_le]
       apply Nat.lt_of_lt_of_le k
@@ -362,6 +359,11 @@ theorem sig_next_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) :
 theorem ulp_dvd_ulp {a b : ℕ} (h : a ≤ b) : ulp a ∣ ulp b :=
   pow_dvd_pow 2 (expt_le_expt h)
 
+theorem ulp_dvd_ulp_of_ulp_le_ulp {a b : ℕ} : ulp a ≤ ulp b → ulp a ∣ ulp b := by
+  unfold ulp
+  rw [Nat.pow_dvd_pow_iff_pow_le_pow two_pos]
+  exact id
+
 theorem ulp_dvd_trunc (a : ℕ) : ulp a ∣ trunc a := Nat.dvd_mul_left _ _
 
 theorem ulp_dvd_of_trunc_eq {a : ℕ} (h : trunc a = a) : ulp a ∣ a := by
@@ -382,7 +384,7 @@ theorem trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq {b : ℕ}
   apply Lemmas.div_mul_pred_eq_sub_of_pos_of_dvd
   . exact ulp_pos _
   . exact h₂
-  . apply Nat.dvd_trans (b := ulp b)
+  . trans ulp b
     . exact ulp_dvd_ulp (Nat.sub_le _ _)
     . exact Trunc.ulp_dvd_of_trunc_eq h₁
 
@@ -392,17 +394,32 @@ theorem next_trunc_pred_eq_self' {a : ℕ} (hpos : 0 < trunc a)
   rw [← trunc_next_comm (trunc a - 1)]
   apply trunc_eq_trunc_of_trunc_le_of_lt_next_trunc
   . unfold next
-    transitivity trunc a - 1 + 1
-    . rw [Nat.sub_add_cancel hpos]
+    trans trunc a - 1 + 1
+    . exact le_tsub_add
     . exact Nat.add_le_add_left (ulp_pos _) _
   . apply add_lt_add_of_lt_of_le
-    . exact Nat.pred_lt (ne_zero_of_lt hpos)
+    . exact tsub_lt_self hpos zero_lt_one
     . exact ulp_le_ulp (Nat.sub_le _ _)
+
+theorem le_next_trunc_pred' {a : ℕ}
+  : trunc a ≤ next (trunc (trunc a - 1)) := by
+  rw [← trunc_next_comm (trunc a - 1)]
+  unfold next
+  rw [← trunc_idempotent]
+  apply trunc_le_trunc
+  trans trunc a - 1 + 1
+  . exact le_tsub_add
+  . rw [trunc_idempotent]
+    exact Nat.add_le_add_left (ulp_pos _) _
 
 theorem next_trunc_pred_eq_self {a : ℕ} (hpos : 0 < a) (h : trunc a = a) :
   next (trunc (a - 1)) = a := by
   revert hpos
   exact h ▸ next_trunc_pred_eq_self'
+
+theorem le_next_trunc_pred {a : ℕ} (h : trunc a = a) :
+  a ≤ next (trunc (a - 1)) := by
+  exact h ▸ le_next_trunc_pred'
 
 theorem trunc_pred_eq_trunc_of_trunc_ne_self {a : ℕ}
   (h : trunc a ≠ a) :
@@ -436,7 +453,7 @@ theorem one_le_expt_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 1 ≤ expt a := by
 theorem two_le_ulp_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ≤ ulp a := by
   rw [← pow_one 2]
   unfold ulp expt
-  apply pow_le_pow one_le_two
+  apply Nat.pow_le_pow_of_le_right two_pos
   exact one_le_expt_of_ge hle
 
 theorem two_dvd_ulp_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ∣ ulp a := by
