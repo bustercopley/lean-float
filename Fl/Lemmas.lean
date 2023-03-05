@@ -114,6 +114,27 @@ theorem add_div_of_pos_of_dvd {x y k : ℕ} (hpos : 0 < k) (hdvd : k ∣ x) :
   rw [Nat.add_comm x, hd, Nat.add_mul_div_left _ _ hpos,
       Nat.mul_div_cancel_left _ hpos, Nat.add_comm]
 
+theorem div_mul_pred_eq_sub_of_pos_of_dvd {a b : ℕ}
+  (h₀ : 0 < a) (h₂ : 0 < b) (h₁ : a ∣ b) :
+  (b - 1) / a * a = b - a := by
+  apply Nat.le_antisymm
+  . apply Lemmas.le_sub_of_dvd_of_dvd_of_lt
+    . exact Nat.dvd_mul_left _ _
+    . exact h₁
+    . apply Nat.lt_of_le_of_lt (m := b - 1)
+      . exact Nat.div_mul_le_self _ _
+      . apply Nat.sub_lt h₂ zero_lt_one
+  . rw [tsub_le_iff_right,
+        ← Nat.succ_mul,
+        ← Nat.add_div_right _ h₀,
+        ← Nat.sub_add_comm (Nat.one_le_of_lt h₂),
+        Nat.add_sub_assoc (Nat.one_le_of_lt h₀)]
+    transitivity b / a * a
+    . rw [Nat.div_mul_cancel h₁]
+    . apply Nat.mul_le_mul_right
+      apply Nat.div_le_div_right
+      exact Nat.le_add_right _ _
+
 theorem size_mul_pow {x : ℕ} (h : 0 < x) (m : ℕ) :
   Nat.size (x * 2 ^ m) = x.size + m := by
   rw [← Nat.shiftl_eq_mul_pow x m]

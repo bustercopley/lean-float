@@ -79,14 +79,9 @@ theorem s1' {a b : ℕ}
   (hba : 2 * a < b) :
   trunc (trunc (b - 1) - a) = trunc (b - 1) - a := by
   have hb_pos : 0 < b := Nat.zero_lt_of_lt hba
-  have h₁ : trunc (b - 1) = b - ulp (b - 1) := by
-    rw [← Nat.add_sub_cancel (trunc (b - 1)) (ulp (b - 1))]
-    apply congr_arg (fun w => w - ulp (b -1))
-    rw [← Trunc.ulp_trunc_eq_ulp, ← next]
-    exact Trunc.next_trunc_pred_eq_self hb_pos hf₁
-  rw [h₁]
-  rw [Nat.sub.right_comm]
-  rw [Trunc.trunc_eq_iff_ulp_dvd]
+  have h₁ : trunc (b - 1) = b - ulp (b - 1) :=
+    Trunc.trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq hb_pos hf₁
+  rw [h₁, Nat.sub.right_comm, Trunc.trunc_eq_iff_ulp_dvd]
   apply Nat.dvd_sub'
   . apply dvd_trans (b := ulp (b - a))
     . apply Trunc.ulp_dvd_ulp

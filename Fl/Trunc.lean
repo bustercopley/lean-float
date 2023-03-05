@@ -375,6 +375,17 @@ theorem trunc_eq_of_le_of_ulp_dvd {a b : ℕ} (k : b ≤ a) (h : ulp a ∣ b) :
 theorem trunc_eq_iff_ulp_dvd {a : ℕ} : trunc a = a ↔ ulp a ∣ a :=
   ⟨ulp_dvd_of_trunc_eq, trunc_eq_of_le_of_ulp_dvd le_rfl⟩
 
+theorem trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq {b : ℕ}
+  (h₂ : 0 < b) (h₁ : trunc b = b) :
+  trunc (b - 1) = b - ulp (b - 1) := by
+  unfold trunc sig
+  apply Lemmas.div_mul_pred_eq_sub_of_pos_of_dvd
+  . exact ulp_pos _
+  . exact h₂
+  . apply Nat.dvd_trans (b := ulp b)
+    . exact ulp_dvd_ulp (Nat.sub_le _ _)
+    . exact Trunc.ulp_dvd_of_trunc_eq h₁
+
 theorem next_trunc_pred_eq_self' {a : ℕ} (hpos : 0 < trunc a)
   : next (trunc (trunc a - 1)) = trunc a := by
   apply Eq.symm
