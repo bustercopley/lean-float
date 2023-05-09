@@ -4,522 +4,521 @@ import Mathlib.Data.Nat.Order.Lemmas
 
 import Fl.Lemmas
 
-namespace Fl.Trunc
+def expt (n x : ℕ) : ℕ := Nat.size x - n
+def ulp (n x : ℕ) : ℕ := 2 ^ expt n x
+def trunc (n x : ℕ) : ℕ := x / ulp n x * ulp n x
+theorem expt_le_expt (n : ℕ) {x y : ℕ} (h : x ≤ y) : expt n x ≤ expt n y := by
+  unfold expt
+  exact Nat.sub_le_sub_right (Nat.size_le_size h) n
 
-namespace Defs
+theorem ulp_pos (n x : ℕ) : 0 < ulp n x := two_pow_pos
 
-axiom n : ℕ
-axiom n_pos : 0 < n
+theorem ulp_le_ulp (n : ℕ) {x y : ℕ} (h : x ≤ y) : ulp n x ≤ ulp n y :=
+  Nat.pow_le_pow_of_le_right two_pos (expt_le_expt n h)
 
-noncomputable def expt (x : ℕ) : ℕ := x.size - n
-noncomputable def ulp (x : ℕ) : ℕ := 2 ^ expt x
-noncomputable def sig (x : ℕ) : ℕ := x / ulp x
-noncomputable def trunc (x : ℕ) : ℕ := sig x * ulp x
-noncomputable def next (x : ℕ) : ℕ := x + ulp x
+theorem trunc_le (n x : ℕ) : trunc n x ≤ x := Nat.div_mul_le_self _ _
 
-end Defs
-
-open Defs
-
-theorem expt_le_expt {x y : ℕ} (h : x ≤ y) : expt x ≤ expt y :=
-  Nat.sub_le_sub_right (Nat.size_le_size h) _
-
-theorem ulp_le_ulp {x y : ℕ} (h : x ≤ y) : ulp x ≤ ulp y :=
-  Nat.pow_le_pow_of_le_right two_pos (expt_le_expt h)
-
-theorem next_le_next {x y : ℕ} (h : x ≤ y) : next x ≤ next y :=
-  Nat.add_le_add h (ulp_le_ulp h)
-
-theorem next_lt_next {x y : ℕ} (h : x < y) : next x < next y :=
-  Nat.lt_of_lt_of_le
-    (Nat.add_lt_add_right h (ulp x))
-    (Nat.add_le_add_left (ulp_le_ulp (le_of_lt h)) y)
-
-theorem expt_eq_zero_of_lt {x : ℕ} (h : x < 2 ^ n) : expt x = 0 :=
-  Nat.sub_eq_zero_of_le (Nat.size_le.mpr h)
-
-theorem ulp_eq_one_of_lt {x : ℕ} (h : x < 2 ^ n) : ulp x = 1 := by
-  unfold ulp
-  rw [expt_eq_zero_of_lt h, Nat.pow_zero]
-
-theorem sig_eq_self_of_lt {x : ℕ} (h : x < 2 ^ n) : sig x = x := by
-  unfold sig
-  rw [ulp_eq_one_of_lt h, Nat.div_one]
-
-theorem ulp_pos (x : ℕ) : 0 < ulp x := Fl.Lemmas.two_pow_pos
-
-theorem ulp_le {a : ℕ} (h : 0 < a) : ulp a ≤ a := by
-  unfold ulp expt
-  trans 2 ^ (a.size - 1)
-  . exact Nat.pow_le_pow_of_le_right two_pos (Nat.sub_le_sub_left a.size n_pos)
-  . exact Fl.Lemmas.le_size_of_pos h
-
-theorem ulp_le_trunc {a : ℕ} (h : 0 < a) : ulp a ≤ trunc a := by
-  unfold trunc sig ulp expt
-  apply Nat.le_mul_of_pos_left
-  rw [← Nat.succ_le, ← Nat.one_eq_succ_zero]
-  rw [Nat.one_le_div_iff Lemmas.two_pow_pos]
-  exact ulp_le h
-
-theorem sig_pos {a : ℕ} (h : 0 < a) : 0 < sig a := by
-  change 1 ≤ sig a
-  unfold sig
-  rw [Nat.le_div_iff_mul_le (ulp_pos _), one_mul]
-  exact ulp_le h
-
-theorem size_trunc_eq_size (x : ℕ) : (trunc x).size = x.size := by
-  unfold trunc sig ulp expt
-  cases x with
-  | zero => rw [Nat.zero_div _, Nat.zero_mul]
-  | succ x =>
-    apply Fl.Lemmas.size_div_mul
-    -- ⊢ 2 ^ (x.succ.size - n) ≤ x.succ
-    rw [← Nat.lt_size]
-    exact Nat.sub_lt (Nat.size_pos.mpr (Nat.succ_pos x)) n_pos
-
-theorem ulp_trunc_eq_ulp (x : ℕ) : ulp (trunc x) = ulp x :=
-  congr_arg (fun w ↦ 2 ^ (w - n)) (size_trunc_eq_size x)
-
-theorem trunc_idempotent (x : ℕ) : trunc (trunc x) = trunc x := by
-  rw [trunc, sig]
-  rw [ulp_trunc_eq_ulp]
-  rw [trunc, sig]
-  rw [Nat.mul_div_cancel _ (ulp_pos x)]
-
-theorem trunc_eq_self_of_lt {x : ℕ} (h : x < 2 ^ n) : trunc x = x := by
+theorem trunc_zero (n : ℕ) : trunc n 0 = 0 := by
   unfold trunc
-  rw [sig_eq_self_of_lt h, ulp_eq_one_of_lt h, Nat.mul_one]
+  rw [Nat.zero_div, Nat.zero_mul]
 
-theorem size_next_le_succ_size (x : ℕ) : (next x).size ≤ x.size + 1 := by
-  rw [Nat.size_le, Nat.pow_succ, Nat.mul_two]
-  unfold next ulp expt
-  rw [Nat.add_comm, ← Nat.add_one_le_iff, add_rotate]
+theorem one_le_expt_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
+: 1 ≤ expt n x := by
+  rewrite [← Nat.add_sub_cancel 1 n]
+  apply Nat.sub_le_sub_right
+  rewrite [Nat.one_add, Nat.succ_le, Nat.lt_size]
+  exact no_uflow
+
+theorem two_le_ulp_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
+: 2 ≤ ulp n x := by
+  rewrite [← pow_one 2]
+  unfold ulp expt
+  apply Nat.pow_le_pow_of_le_right two_pos
+  exact one_le_expt_of_no_uflow no_uflow
+
+theorem expt_eq_zero_of_uflow {n x : ℕ} (uflow: x < 2 ^ n) : expt n x = 0 :=
+  Nat.sub_eq_zero_of_le (Nat.size_le.mpr uflow)
+
+theorem ulp_eq_one_of_uflow {n x : ℕ} (uflow : x < 2 ^ n) : ulp n x = 1 := by
+  unfold ulp
+  rw [expt_eq_zero_of_uflow uflow, Nat.pow_zero]
+
+theorem trunc_add_half_ulp_eq_of_uflow {n x : ℕ} (uflow : x < 2 ^ n)
+: trunc n x + ulp n x / 2 = x := by
+  unfold trunc
+  rewrite [ulp_eq_one_of_uflow uflow]
+  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_zero one_lt_two, Nat.add_zero]
+
+theorem trunc_eq_self_of_uflow {n x : ℕ} (uflow : x < 2 ^ n)
+: trunc n x = x := by
+  unfold trunc
+  rw [ulp_eq_one_of_uflow uflow, Nat.mul_one, Nat.div_one]
+
+theorem trunc_pow {n : ℕ} (npos : 0 < n) (k : ℕ)
+: trunc n (2 ^ k) = 2 ^ k := by
+  have : 2 ^ (k + 1 - n) ∣ 2 ^ k := by
+    rewrite [← tsub_add_cancel_of_le $ Nat.one_le_of_lt npos]
+    rewrite [Nat.add_one, Nat.add_one, Nat.succ_sub_succ_eq_sub]
+    rewrite [Nat.pow_dvd_pow_iff_le_right one_lt_two]
+    exact tsub_le_self
+  unfold trunc ulp expt
+  rewrite [Nat.size_pow]
+  rw [Nat.div_mul_cancel this]
+
+theorem trunc_ulp {n : ℕ} (npos : 0 < n) (x : ℕ)
+: trunc n (ulp n x) = ulp n x := trunc_pow npos _
+
+def sub_right_monotonic (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
+  a ≤ b → round (a - c) ≤ round (b - c)
+
+def sub_left_monotonic (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
+  a ≤ b → round (c - b) ≤ round (c - a)
+
+theorem ulp_dvd_ulp (n : ℕ) {x y : ℕ} (h : x ≤ y) : ulp n x ∣ ulp n y :=
+  pow_dvd_pow 2 (expt_le_expt n h)
+
+theorem ulp_dvd_trunc (n a : ℕ) : ulp n a ∣ trunc n a := Nat.dvd_mul_left _ _
+
+theorem ulp_dvd_of_trunc_eq {n a : ℕ} (h : trunc n a = a)
+: ulp n a ∣ a := calc
+  ulp n a ∣ trunc n a := ulp_dvd_trunc n a
+  _ = a               := h
+
+theorem two_dvd_ulp_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
+: 2 ∣ ulp n x := by
+  rewrite [← pow_one 2]
+  unfold ulp
+  rewrite [Nat.pow_dvd_pow_iff_pow_le_pow two_pos]
+  rewrite [pow_one 2]
+  exact two_le_ulp_of_no_uflow no_uflow
+
+theorem trunc_eq_of_le_of_ulp_dvd {n y : ℕ} (x : ℕ) (hle : y ≤ x) (hdvd : ulp n x ∣ y)
+: trunc n y = y :=
+  Nat.div_mul_cancel (dvd_trans (ulp_dvd_ulp n hle) hdvd)
+
+theorem trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq {x n : ℕ}
+  (xpos : 0 < x) (hfx : trunc n x = x)
+: trunc n (x - 1) = x - ulp n (x - 1) := by
+  unfold trunc
+  apply div_mul_pred_eq_sub_of_pos_of_dvd
+  . exact ulp_pos n _
+  . exact xpos
+  . trans ulp n x
+    . exact ulp_dvd_ulp n tsub_le_self
+    . exact ulp_dvd_of_trunc_eq hfx
+
+theorem trunc_eq_iff_ulp_dvd {a n : ℕ}
+: trunc n a = a ↔ ulp n a ∣ a :=
+  ⟨ulp_dvd_of_trunc_eq, trunc_eq_of_le_of_ulp_dvd a le_rfl⟩
+
+theorem trunc_eq_sub_mod (n x : ℕ) : trunc n x = x - x % (ulp n x) := by
+  symm
+  rewrite [Nat.sub_eq_iff_eq_add (Nat.mod_le x (ulp n x))]
+  symm
+  exact Nat.div_add_mod' x (ulp n x)
+
+theorem ulp_le_self {n x : ℕ} (npos : 0 < n) (xpos : 0 < x) : ulp n x ≤ x := by
+  unfold ulp expt
+  trans 2 ^ (Nat.size x - 1)
+  . exact Nat.pow_le_pow_of_le_right two_pos (Nat.sub_le_sub_left (Nat.size x) npos)
+  . exact le_size_of_pos xpos
+
+theorem size_trunc_eq_size {n : ℕ} (npos : 0 < n) (x : ℕ)
+: Nat.size (trunc n x) = Nat.size x := by
+  unfold trunc ulp expt
+  cases Nat.eq_zero_or_pos x with
+  | inl zero => rw [zero, Nat.zero_div, Nat.zero_mul]
+  | inr pos =>
+    apply size_div_mul
+    rewrite [← Nat.lt_size]
+    exact Nat.sub_lt (Nat.size_pos.mpr pos) npos
+
+theorem ulp_trunc {n : ℕ} (npos : 0 < n) (x : ℕ)
+: ulp n (trunc n x) = ulp n x := by
+  unfold ulp expt
+  rw [size_trunc_eq_size npos x]
+
+theorem ulp_le_trunc {n x : ℕ} (npos : 0 < n) (xpos : 0 < x) : ulp n x ≤ trunc n x := by
+  have trunc_pos : 0 < trunc n x := by
+    unfold trunc
+    apply Nat.mul_pos
+    . apply Nat.div_pos
+      . exact ulp_le_self npos xpos
+      . exact ulp_pos _ _
+    . exact ulp_pos _ _
+  rewrite [← ulp_trunc npos]
+  exact ulp_le_self npos trunc_pos
+
+theorem trunc_idempotent {n : ℕ} (npos : 0 < n) (x : ℕ)
+: trunc n (trunc n x) = trunc n x := by
+  rw [trunc, ulp_trunc npos, trunc, Nat.mul_div_cancel _ (ulp_pos _ _)]
+
+theorem trunc_le_trunc {n x y : ℕ} (npos : 0 < n) (h : x ≤ y) : trunc n x ≤ trunc n y := by
+  cases Nat.lt_or_ge (Nat.size x) (Nat.size y) with
+  | inl size_lt_size =>
+    rewrite [← size_trunc_eq_size npos x] at size_lt_size
+    rewrite [← size_trunc_eq_size npos y] at size_lt_size
+    exact le_of_lt (lt_of_size_lt_size size_lt_size)
+  | inr size_ge_size =>
+    have ulp_eq_ulp : ulp n x = ulp n y := by
+      apply congr_arg (fun w => 2 ^ (w - n))
+      exact Nat.le_antisymm (Nat.size_le_size h) size_ge_size
+    unfold trunc
+    rewrite [ulp_eq_ulp]
+    exact Nat.mul_le_mul_right _ (Nat.div_le_div_right h)
+
+theorem trunc_trunc_sub_ulp_eq {n x : ℕ} (npos : 0 < n)
+: trunc n (trunc n x - ulp n x) = trunc n x - ulp n x := by
+  apply trunc_eq_of_le_of_ulp_dvd
+  . exact tsub_le_self
+  . rewrite [ulp_trunc npos]
+    apply Nat.dvd_sub'
+    . exact ulp_dvd_trunc n _
+    . exact Nat.dvd_refl _
+
+theorem trunc_sub_ulp_eq_of_trunc_eq {n x : ℕ} (npos : 0 < n)
+  (h : trunc n x = x)
+: trunc n (x - ulp n x) = x - ulp n x := by
+  rewrite [← h, ulp_trunc npos]
+  exact trunc_trunc_sub_ulp_eq npos
+
+theorem ulp_pow_mul {n x : ℕ} (npos : 0 < n) (h : n ≤ Nat.size x) (k : ℕ)
+: ulp n (2 ^ k * x) = 2 ^ k * ulp n x := by
+  unfold ulp expt
+  have pos : 0 < x := by
+    rewrite [← Nat.size_pos]
+    exact Nat.lt_of_lt_of_le npos h
+  rw [← pow_add, size_pow_mul pos, Nat.sub_add_comm h, Nat.add_comm]
+
+theorem ulp_two_mul {n x : ℕ} (npos : 0 < n) (h : n ≤ Nat.size x)
+: ulp n (2 * x) = 2 * ulp n x := by
+  rewrite [← pow_one 2]
+  exact ulp_pow_mul npos h 1
+
+theorem ulp_div_pow {n a : ℕ} (npos : 0 < n) (h : n < Nat.size a - k) (hfa : trunc n a = a)
+: ulp n (a / 2 ^ k) = ulp n a / 2 ^ k := by
+  have h₀ : 2 ^ k ≤ a := by
+    trans 2 ^ (k + n)
+    . exact Nat.pow_le_pow_of_le_right two_pos (Nat.le_add_right _ _)
+    . rewrite [← Nat.lt_size]
+      rewrite [← lt_tsub_iff_left]
+      exact h
+  have hle : n ≤ Nat.size (a / 2 ^ k) := by
+    rewrite [size_div_pow h₀]
+    exact h.le
+  have hdvd : 2 ^ k ∣ ulp n a := by
+    unfold ulp expt
+    rewrite [Nat.pow_dvd_pow_iff_le_right one_lt_two]
+    apply Nat.le_of_lt
+    rewrite [lt_tsub_iff_left]
+    rewrite [← lt_tsub_iff_right]
+    exact h
+  have hdvd' : 2 ^ k ∣ a := Nat.dvd_trans hdvd (ulp_dvd_of_trunc_eq hfa)
+  apply mul_right_cancel₀ (ne_zero_of_lt two_pow_pos)
+  rewrite [Nat.div_mul_cancel hdvd, Nat.mul_comm]
+  rewrite [← ulp_pow_mul npos hle]
+  rw [Nat.mul_comm, Nat.div_mul_cancel hdvd']
+
+theorem ulp_div_pow' {n a : ℕ} (npos : 0 < n) (h : n ≤ Nat.size a - k)
+: ulp n (a / 2 ^ k) = ulp n a / 2 ^ k := by
+  cases Nat.eq_zero_or_pos k with
+  | inl kzero =>
+    rw [kzero, Nat.pow_zero, Nat.div_one, Nat.div_one]
+  | inr kpos =>
+    have h₁ : n ≤ Nat.size a := by
+      trans Nat.size a - k
+      . exact h
+      . exact tsub_le_self
+    have h₂ : k < Nat.size a := by
+      rewrite [← tsub_pos_iff_lt]
+      apply Nat.lt_of_lt_of_le npos
+      exact h
+    have h₃ : k ≤ Nat.size a - n := by
+      rewrite [le_tsub_iff_le_tsub h₂.le h₁]
+      exact h
+    have h₄ : 2 ^ k ≤ a := by
+      rewrite [← Nat.lt_size]
+      exact h₂
+    unfold ulp expt
+    rewrite [Nat.pow_div h₃ two_pos]
+    rewrite [size_div_pow h₄]
+    rw [tsub_right_comm]
+
+theorem trunc_pow_mul {n : ℕ} (npos : 0 < n) (x k : ℕ)
+: trunc n ((2 ^ k) * x) = 2 ^ k * trunc n x := by
+  cases eq_or_ne x 0 with
+  | inl eq_zero =>
+    unfold trunc ulp expt
+    rw [eq_zero, Nat.mul_zero, Nat.zero_div, Nat.zero_mul, Nat.mul_zero]
+  | inr ne_zero =>
+    cases Nat.lt_or_ge n (Nat.size x) with
+    | inr size_le =>
+      have uflow : x < 2 ^ n := by
+        rewrite [← Nat.size_le]
+        exact size_le.le
+      have d : ulp n (2 ^ k * x) ∣ 2 ^ k * x := by
+        unfold ulp expt
+        apply dvd_mul_of_dvd_left
+        rewrite [Nat.pow_dvd_pow_iff_le_right one_lt_two]
+        rewrite [size_pow_mul (Nat.zero_lt_of_ne_zero ne_zero)]
+        rewrite [tsub_le_iff_left]
+        apply Nat.add_le_add_right
+        exact size_le
+      rewrite [trunc_eq_self_of_uflow uflow]
+      exact trunc_eq_of_le_of_ulp_dvd (2 ^ k * x) le_rfl d
+    | inl lt_size =>
+      unfold trunc
+      rewrite [ulp_pow_mul npos (le_of_lt lt_size)]
+      rewrite [Nat.mul_div_mul_left _ _ two_pow_pos]
+      rw [mul_rotate', Nat.mul_comm (ulp n x)]
+
+theorem trunc_two_mul {n : ℕ} (npos : 0 < n) (x : ℕ)
+: trunc n (2 * x) = 2 * trunc n x := by
+  rw [← pow_one 2, trunc_pow_mul npos x 1]
+
+theorem trunc_le_size_sub_ulp {n : ℕ} (npos : 0 < n) (a : ℕ)
+: trunc n a ≤ 2 ^ Nat.size a - ulp n a := by
+  rewrite [← size_trunc_eq_size npos]
+  rewrite [← ulp_trunc npos]
+  apply le_sub_of_dvd_of_dvd_of_lt
+  . exact ulp_dvd_of_trunc_eq (trunc_idempotent npos _)
+  . rewrite [ulp, expt, Nat.pow_dvd_pow_iff_le_right one_lt_two]
+    exact tsub_le_self
+  . exact Nat.lt_size_self _
+
+theorem le_size_sub_ulp_of_trunc_eq {n : ℕ} (npos : 0 < n) (hfa : trunc n a = a)
+: a ≤ 2 ^ Nat.size a - ulp n a := calc
+  a = trunc n a                := hfa.symm
+  _ ≤ 2 ^ Nat.size a - ulp n a := trunc_le_size_sub_ulp npos a
+
+theorem le_size_and_ulp_eq_of_no_uflow_of_carry
+  {n a b : ℕ}
+  (hba : b ≤ a) (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ Nat.size a ≤ a + b)
+: n ≤ Nat.size a ∧ ulp n (a + b) = 2 * ulp n a := by
+  have size_eq : Nat.size (a + b) = Nat.size a + 1 := by
+    apply Nat.le_antisymm
+    . rewrite [Nat.size_le, pow_succ, Nat.two_mul]
+      apply Nat.add_lt_add
+      . exact Nat.lt_size_self _
+      . exact Nat.lt_of_le_of_lt hba (Nat.lt_size_self _)
+    . rewrite [Nat.succ_le, Nat.lt_size]
+      exact carry
+  have le_size : n ≤ Nat.size a := by
+    rewrite [← Nat.lt_succ, Nat.succ_eq_add_one]
+    calc
+      n < Nat.size (a + b) := by rwa [Nat.lt_size]
+      _ = Nat.size a + 1   := size_eq
+  have ulp_eq : ulp n (a + b) = 2 * ulp n a := by
+    calc
+      ulp n (a + b)
+        = 2 ^ (Nat.size (a + b) - n) := rfl
+      _ = 2 ^ (Nat.size a + 1 - n)   := by rw [size_eq]
+      _ = 2 ^ (Nat.size a - n + 1)   := by rw [Nat.sub_add_comm le_size]
+      _ = 2 * 2 ^ (Nat.size a - n)   := by rw [pow_succ]
+      _ = 2 * ulp n a                := rfl
+  exact ⟨le_size, ulp_eq⟩
+
+def next (n x : ℕ) : ℕ := x + ulp n x
+
+theorem next_le_next (n : ℕ) {x y : ℕ} (h : x ≤ y) : next n x ≤ next n y :=
+  Nat.add_le_add h (ulp_le_ulp n h)
+
+theorem next_lt_next (n : ℕ) {x y : ℕ} (h : x < y) : next n x < next n y :=
+  Nat.lt_of_lt_of_le
+    (Nat.add_lt_add_right h (ulp n x))
+    (Nat.add_le_add_left (ulp_le_ulp n (le_of_lt h)) y)
+
+theorem lt_next (n x : ℕ) : x < next n x :=
+  Nat.lt_add_of_pos_right (ulp_pos n x)
+
+theorem size_next_le_succ_size (n x : ℕ)
+: Nat.size (next n x) ≤ Nat.size x + 1 := by
+  rewrite [Nat.size_le, Nat.pow_succ, Nat.mul_two]
+  unfold next ulp
+  rewrite [Nat.add_comm, ← Nat.add_one_le_iff, add_rotate]
   apply Nat.add_le_add
   . exact Nat.lt_size_self x
-  . exact Nat.pow_le_pow_of_le_right two_pos (Nat.sub_le _ _)
+  . exact Nat.pow_le_pow_of_le_right two_pos tsub_le_self
 
-theorem size_next_eq_size_of_lt {x : ℕ} (h : next x < 2 ^ x.size) :
-  (next x).size = x.size :=
-  Nat.le_antisymm (Nat.size_le.mpr h) (Nat.size_le_size (Nat.le_add_right _ _))
+theorem size_next_eq_size_of_no_carry {n x : ℕ} (no_carry : next n x < 2 ^ Nat.size x)
+: Nat.size (next n x) = Nat.size x := by
+  apply Nat.le_antisymm
+  . rwa [Nat.size_le]
+  . exact Nat.size_le_size (Nat.le_add_right _ _)
 
-theorem size_next_eq_succ_size_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  (next x).size = x.size + 1 :=
-  Nat.le_antisymm (size_next_le_succ_size x) (Nat.lt_size.mpr h)
+theorem size_next_eq_succ_size_of_carry {x : ℕ} (carry : 2 ^ Nat.size x ≤ next n x)
+: Nat.size (next n x) = Nat.size x + 1 := by
+  apply Nat.le_antisymm
+  . exact size_next_le_succ_size n x
+  . rwa [Nat.add_one, Nat.succ_le, Nat.lt_size]
 
-theorem ulp_next_of_lt {x : ℕ} (h : next x < 2 ^ x.size) :
-  ulp (next x) = ulp x := by
+theorem ulp_next_of_no_carry {n x : ℕ} (no_carry : next n x < 2 ^ Nat.size x)
+: ulp n (next n x) = ulp n x := by
   unfold ulp expt
-  rw [size_next_eq_size_of_lt h]
+  rw [size_next_eq_size_of_no_carry no_carry]
 
-theorem ulp_next_of_ge_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) (k : n ≤ x.size) :
-  ulp (next x) = ulp x * 2 := by
+theorem ulp_next_of_carry_of_no_uflow {x : ℕ}
+  (carry : 2 ^ Nat.size x ≤ next n x) (no_uflow : n ≤ Nat.size x)
+: ulp n (next n x) = ulp n x * 2 := by
   unfold ulp expt
-  rw [size_next_eq_succ_size_of_ge h]
-  rw [Nat.sub_add_comm k]
+  rewrite [size_next_eq_succ_size_of_carry carry]
+  rewrite [Nat.sub_add_comm no_uflow]
   exact Nat.pow_succ _ _
 
-theorem ulp_next_of_ge_of_lt {x : ℕ} (h : 2 ^ x.size ≤ next x) (k : x.size < n) :
-  ulp (next x) = 1 := by
+theorem ulp_next_of_carry_of_uflow {x : ℕ}
+  (carry : 2 ^ Nat.size x ≤ next n x) (uflow : Nat.size x < n)
+: ulp n (next n x) = 1 := by
   unfold ulp expt
-  rw [size_next_eq_succ_size_of_ge h]
-  rw [Nat.sub_eq_zero_of_le k]
+  rewrite [← Nat.succ_le] at uflow
+  rewrite [size_next_eq_succ_size_of_carry carry]
+  rewrite [Nat.sub_eq_zero_of_le uflow]
   exact Nat.pow_zero _
 
-theorem next_lt_size_add_ulp (x : ℕ) : next x < 2 ^ x.size + ulp x :=
-  Nat.add_lt_add_right (Nat.lt_size_self _) _
+theorem trunc_next_of_no_carry {n x : ℕ} (no_carry : next n x < 2 ^ Nat.size x)
+: trunc n (next n x) = trunc n x + ulp n x := by
+  rw [trunc, ulp_next_of_no_carry no_carry, next, trunc, ← Nat.succ_mul,
+      Nat.add_div_right _ (ulp_pos n x)]
 
-theorem next_lt_of_size_lt {x : ℕ} (hlt : x.size < n) :
-  next x < 2 ^ n :=
-  Nat.size_le.mp (Nat.le_trans (size_next_le_succ_size x) hlt)
+theorem trunc_next_comm_of_no_carry {n x : ℕ} (npos : 0 < n)
+  (no_carry : next n x < 2 ^ Nat.size x)
+: trunc n (next n x) = next n (trunc n x) := by
+  rw [trunc_next_of_no_carry no_carry, next, ulp_trunc npos x]
 
-theorem sig_next_of_lt {x : ℕ} (h : next x < 2 ^ x.size) :
-  sig (next x) = sig x + 1 := by
-  unfold sig
-  rw [ulp_next_of_lt h]
-  exact Nat.add_div_right _ (ulp_pos x)
-
-theorem trunc_eq_sub_mod (x : ℕ) : trunc x = x - x % (ulp x) := by
-  apply Eq.symm
-  rw [Nat.sub_eq_iff_eq_add (Nat.mod_le x (ulp x))]
-  apply Eq.symm
-  exact Nat.div_add_mod' x (ulp x)
-
-theorem trunc_next_comm_of_lt_size {x : ℕ} (h : next x < 2 ^ x.size) :
-  trunc (next x) = next (trunc x) := by
-  unfold trunc
-  rw [sig_next_of_lt h]
-  rw [ulp_next_of_lt h]
-  rw [Nat.succ_mul]
-  apply congr_arg (fun w ↦ x / ulp x * ulp x + w)
-  exact (ulp_trunc_eq_ulp x).symm
-
-theorem trunc_next_of_ge_size {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  trunc (next x) = 2 ^ x.size := by
-  have h₁ : expt (next x) ≤ x.size := by
+theorem trunc_next_of_carry {n x : ℕ} (npos : 0 < n)
+  (carry : 2 ^ Nat.size x ≤ next n x)
+: trunc n (next n x) = 2 ^ Nat.size x := by
+  have h₁ : expt n (next n x) ≤ Nat.size x := by
     unfold expt
-    rw [size_next_eq_succ_size_of_ge h]
-    trans x.size + 1 - 1
-    . exact Nat.sub_le_sub_left (x.size + 1) n_pos
+    rewrite [size_next_eq_succ_size_of_carry carry]
+    trans Nat.size x + 1 - 1
+    . exact Nat.sub_le_sub_left (Nat.size x + 1) npos
     . rw [Nat.add_sub_cancel]
-  have h₃ : next x < 2 ^ x.size + 2 ^ expt (next x) := by
+  have h₃ : next n x < 2 ^ Nat.size x + 2 ^ expt n (next n x) := by
     apply add_lt_add_of_lt_of_le
     . exact Nat.lt_size_self x
     . apply ulp_le_ulp
-      exact Nat.le_add_right x (2 ^ expt x)
-  exact Fl.Lemmas.div_mul_eq_of_le_of_lt' h₁ h h₃
+      exact Nat.le_add_right x (2 ^ expt n x)
+  exact div_mul_eq_of_le_of_lt h₁ carry h₃
 
-theorem next_trunc_of_ge_size {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  next (trunc x) = 2 ^ x.size := by
+theorem next_trunc_of_carry {n x : ℕ} (npos : 0 < n)
+  (carry : 2 ^ Nat.size x ≤ next n x)
+: next n (trunc n x) = 2 ^ Nat.size x := by
   unfold next
-  rw [ulp_trunc_eq_ulp]
-  unfold trunc sig ulp
-  rw [← Nat.succ_mul]
-  rw [← Nat.add_div_right x Fl.Lemmas.two_pow_pos]
-  have h₁ : expt x ≤ x.size := Nat.sub_le x.size n
-  have h₃ : next x < 2 ^ x.size + 2 ^ expt x :=
+  rewrite [ulp_trunc npos]
+  unfold trunc ulp
+  rewrite [← Nat.succ_mul]
+  rewrite [← Nat.add_div_right x two_pow_pos]
+  have h₁ : expt n x ≤ Nat.size x := Nat.sub_le (Nat.size x) n
+  have h₃ : next n x < 2 ^ Nat.size x + 2 ^ expt n x :=
     Nat.add_lt_add_right (Nat.lt_size_self x) _
-  exact Fl.Lemmas.div_mul_eq_of_le_of_lt' h₁ h h₃
+  exact div_mul_eq_of_le_of_lt h₁ carry h₃
 
-theorem trunc_next_comm (x : ℕ) : trunc (next x) = next (trunc x) := by
-  cases Nat.lt_or_ge (next x) (2 ^ x.size) with
-  | inl next_lt => -- next_lt : next x < 2 ^ x.size
-    exact trunc_next_comm_of_lt_size next_lt
-  | inr next_ge => -- next_ge : next x ≥ 2 ^ x.size
-    exact (next_trunc_of_ge_size next_ge) ▸ (trunc_next_of_ge_size next_ge)
+theorem trunc_next_comm {n : ℕ} (npos : 0 < n) (x : ℕ)
+: trunc n (next n x) = next n (trunc n x) := by
+  cases Nat.lt_or_ge (next n x) (2 ^ Nat.size x) with
+  | inl next_lt => -- next_lt : next n x < 2 ^ Nat.size x
+    exact trunc_next_comm_of_no_carry npos next_lt
+  | inr next_ge => -- next_ge : next n x ≥ 2 ^ Nat.size x
+    rw [next_trunc_of_carry npos next_ge, trunc_next_of_carry npos next_ge]
 
-theorem lt_next (x : ℕ) : x < next x :=
-  Nat.lt_add_of_pos_right (ulp_pos x)
+theorem trunc_next_trunc {n : ℕ} (npos : 0 < n) (x : ℕ)
+: trunc n (next n (trunc n x)) = next n (trunc n x) := by
+  rw [trunc_next_comm npos, trunc_idempotent npos]
 
-theorem lt_next_trunc (x : ℕ) : x < next (trunc x) := by
+theorem lt_next_trunc {n : ℕ} (npos : 0 < n) (x : ℕ)
+: x < next n (trunc n x) := by
   unfold next
-  rw [ulp_trunc_eq_ulp]
-  unfold trunc sig
-  rw [← Nat.succ_mul, mul_comm]
-  exact Nat.lt_mul_div_succ x (ulp_pos x)
+  rewrite [ulp_trunc npos]
+  unfold trunc
+  rewrite [← Nat.succ_mul, mul_comm]
+  exact Nat.lt_mul_div_succ x (ulp_pos n x)
 
-theorem lt_trunc_next (x : ℕ) : x < trunc (next x) :=
-  trunc_next_comm x ▸ lt_next_trunc x
+theorem lt_trunc_next {n : ℕ} (npos : 0 < n) (x : ℕ) : x < trunc n (next n x) :=
+  trunc_next_comm npos x ▸ lt_next_trunc npos x
 
-theorem lt_next_trunc_of_trunc_le_trunc {x y : ℕ} (h : trunc y ≤ trunc x) :
-  y < next (trunc x) :=
-  Nat.lt_of_lt_of_le (lt_next_trunc y) (Nat.add_le_add h (ulp_le_ulp h))
+theorem trunc_next_le {n : ℕ} (npos: 0 < n) (x : ℕ)
+: trunc n (next n x) ≤ 2 ^ Nat.size x := by
+  cases Nat.le_total (next n x) (2 ^ Nat.size x) with
+  | inl le => exact Nat.le_trans (trunc_le n (next n x)) le
+  | inr ge => exact Nat.le_of_eq (trunc_next_of_carry npos ge)
 
-theorem trunc_le_trunc {x y : ℕ} (h : x ≤ y) : trunc x ≤ trunc y := by
-  cases Nat.lt_or_ge x.size y.size with
-  | inl size_lt_size => -- size_lt_size : x.size < y.size
-    rw [← size_trunc_eq_size x] at size_lt_size
-    rw [← size_trunc_eq_size y] at size_lt_size
-    exact le_of_lt (Fl.Lemmas.lt_of_size_lt_size size_lt_size)
-  | inr size_ge_size => -- size_ge_size : y.size ≤ x.size
-    have ulp_eq_ulp : ulp x = ulp y := by
-      apply congr_arg (fun w => 2 ^ (w - n))
-      exact Nat.le_antisymm (Nat.size_le_size h) size_ge_size
-    unfold trunc sig
-    rw [ulp_eq_ulp]
-    exact Nat.mul_le_mul_right _ (Nat.div_le_div_right h)
+theorem next_trunc_le {n : ℕ} (npos: 0 < n) (x : ℕ)
+: next n (trunc n x) ≤ 2 ^ Nat.size x := by
+  rewrite [← trunc_next_comm npos]
+  exact trunc_next_le npos x
 
-theorem trunc_le (x : ℕ) : trunc x ≤ x := Nat.div_mul_le_self _ _
-
-theorem trunc_next_le (x : ℕ) : trunc (next x) ≤ 2 ^ x.size := by
-  cases Nat.le_total (next x) (2 ^ x.size) with
-  | inl le => exact Nat.le_trans (trunc_le (next x)) le
-  | inr ge => exact Nat.le_of_eq (trunc_next_of_ge_size ge)
-
-theorem next_trunc_le (x : ℕ) : next (trunc x) ≤ 2 ^ x.size := by
-  rw [← trunc_next_comm]
-  exact trunc_next_le x
-
-theorem trunc_eq_trunc_of_trunc_le_of_lt_next_trunc {x y : ℕ}
-  (h : trunc x ≤ y) (k : y < next (trunc x)) :
-  trunc x = trunc y := by
-  have ulp_eq : ulp x = ulp y := by
-    rw [← ulp_trunc_eq_ulp]
+theorem trunc_eq_trunc_of_le_of_lt {x y n : ℕ} (npos : 0 < n)
+  (h : trunc n x ≤ y) (k : y < next n (trunc n x)) :
+  trunc n x = trunc n y := by
+  have ulp_eq : ulp n x = ulp n y := by
+    rewrite [← ulp_trunc npos]
     apply le_antisymm
     . apply ulp_le_ulp
       exact h
-    . rw [ulp_trunc_eq_ulp x]
+    . rewrite [ulp_trunc npos]
       unfold ulp expt
       apply Nat.pow_le_pow_of_le_right two_pos
       apply Nat.sub_le_sub_right
-      rw [Nat.size_le]
+      rewrite [Nat.size_le]
       apply Nat.lt_of_lt_of_le k
-      exact next_trunc_le x
-  unfold trunc sig
-  rw [← ulp_eq]
+      exact next_trunc_le npos x
+  unfold trunc
+  rewrite [← ulp_eq]
   apply Eq.symm
-  apply congr_arg (fun w => w * ulp x)
-  refine Nat.eq_of_le_of_lt_succ ?_ ?_
-  . rw [← Nat.mul_div_cancel (x / ulp x) (ulp_pos x)]
+  apply congr_arg (fun w => w * ulp n x)
+  apply Nat.eq_of_le_of_lt_succ
+  . rewrite [← Nat.mul_div_cancel (x / ulp n x) (ulp_pos n x)]
     exact Nat.div_le_div_right h
-  . rw [Nat.div_lt_iff_lt_mul (ulp_pos x)]
-    rw [Nat.mul_comm, Nat.mul_succ, Nat.mul_comm]
-    rw [← sig, ← trunc, ← ulp_trunc_eq_ulp, ← next]
+  . rewrite [Nat.div_lt_iff_lt_mul (ulp_pos n x)]
+    rewrite [Nat.mul_comm, Nat.mul_succ, Nat.mul_comm]
+    rewrite [← trunc, ← ulp_trunc npos, ← next]
     exact k
 
-theorem next_pos (x : ℕ) : 0 < next x :=
-  lt_add_of_le_of_pos (Nat.zero_le x) (ulp_pos x)
-
-theorem trunc_zero : trunc 0 = 0 := by simp [trunc, sig]
-
-theorem trunc_eq_zero_iff_eq_zero (x : ℕ) : trunc x = 0 ↔ x = 0 := by
-  constructor
-  . unfold trunc sig
-    rw [Nat.mul_eq_zero]
-    apply Or.rec
-    . rw [Nat.div_eq_zero_iff (ulp_pos _)]
-      unfold ulp expt
-      rw [← Nat.size_le]
-      rw [← Nat.size_eq_zero]
-      exact Lemmas.eq_zero_of_le_sub n_pos
-    . exact Not.elim (ne_zero_of_lt (ulp_pos x))
-  . intro h
-    rw [← trunc_zero]
-    exact congr_arg trunc h
-
-theorem trunc_pos_iff_pos {x : ℕ} : 0 < trunc x ↔ 0 < x := by
-  rw [zero_lt_iff, zero_lt_iff, not_iff_not]
-  exact trunc_eq_zero_iff_eq_zero x
-
-theorem lt_trunc_next_of_trunc_le_trunc {x y : ℕ} (h : trunc y ≤ trunc x) :
-  y < trunc (next x) := by
-  apply Nat.lt_of_lt_of_le (m := trunc (next y))
-  . exact lt_trunc_next y
-  . rw [trunc_next_comm, trunc_next_comm]
-    unfold next
-    exact add_le_add h (ulp_le_ulp h)
-
-theorem trunc_le_trunc_of_lt_next_trunc {x y : ℕ}
-  (h : x < next (trunc y)) :
-  trunc x ≤ trunc y :=
-  Or.elim (le_or_gt (trunc y) x)
-    (fun le => ge_of_eq (trunc_eq_trunc_of_trunc_le_of_lt_next_trunc le h))
-    (fun gt => trunc_le_trunc (Nat.le_trans (le_of_lt gt) (trunc_le y)))
-
-theorem trunc_le_trunc_iff (x y : ℕ) :
-  trunc x ≤ trunc y ↔ x < next (trunc y) :=
-  ⟨lt_next_trunc_of_trunc_le_trunc, trunc_le_trunc_of_lt_next_trunc⟩
-
-theorem next_div_ulp_le (x : ℕ) :
-  next x / ulp x ≤ 2 ^ (min n x.size) := by
-  cases Nat.le_total x.size n with
-  | inr le_size => -- le_size : n ≤ x.size
-    rw [min_eq_left_iff.mpr le_size]
-    rw [Nat.div_le_iff_le_mul_add_pred (ulp_pos x)]
-    rw [← Nat.add_sub_assoc (ulp_pos x)]
-    apply Nat.le_pred_of_lt
-    change next x < 2 ^ (x.size - n) * 2 ^ n + ulp x
-    rw [← pow_add]
-    rw [Nat.sub_add_cancel le_size]
-    exact next_lt_size_add_ulp x
-  | inl size_le => -- size_lt : x.size < n
-    rw [min_eq_right_iff.mpr size_le]
-    unfold next ulp expt
-    rw [Nat.sub_eq_zero_of_le size_le]
-    rw [pow_zero, Nat.div_one]
-    exact Nat.lt_size_self x
-
-theorem next_div_ulp_ge_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  next x / ulp x ≥ 2 ^ (min n x.size) := by
-  rw [ge_iff_le]
-  rw [Nat.le_div_iff_mul_le (ulp_pos x)]
-  unfold ulp expt
-  rw [← pow_add]
-  rw [min_comm, Nat.add_comm]
-  rw [Nat.sub_add_min_cancel]
-  exact h
-
-theorem next_div_ulp_eq_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  next x / ulp x = 2 ^ (min n x.size) :=
-  Nat.le_antisymm (next_div_ulp_le x) (next_div_ulp_ge_of_ge h)
-
-theorem sig_next_of_ge {x : ℕ} (h : 2 ^ x.size ≤ next x) :
-  sig (next x) = 2 ^ min (n - 1) x.size := by
-  cases Nat.lt_or_ge x.size n with
-  | inl size_lt => -- size_lt : x.size < n
-    have le : x.size ≤ n - 1 := Nat.le_pred_of_lt size_lt
-    have size_le : x < 2 ^ n := Nat.size_le.mp (Nat.le_of_lt size_lt)
-    rw [min_eq_right_iff.mpr le]
-    rw [sig_eq_self_of_lt (next_lt_of_size_lt size_lt)]
-    apply le_antisymm
-    . unfold next
-      rw [ulp_eq_one_of_lt size_le]
-      exact Nat.lt_size_self x
-    . exact h
-  | inr le_size => -- le_size : n ≤ x.size
-    have pred_le : n - 1 ≤ x.size := Nat.le_trans (Nat.pred_le n) le_size
-    rw [min_eq_left_iff.mpr pred_le]
-    unfold sig
-    rw [ulp_next_of_ge_of_ge h le_size]
-    rw [← Nat.div_div_eq_div_mul]
-    rw [next_div_ulp_eq_of_ge h]
-    rw [min_eq_left_iff.mpr le_size]
-    rw [← Nat.pow_div n_pos two_pos]
-    rw [pow_one]
-
-theorem ulp_dvd_ulp {a b : ℕ} (h : a ≤ b) : ulp a ∣ ulp b :=
-  pow_dvd_pow 2 (expt_le_expt h)
-
-theorem ulp_dvd_ulp_of_ulp_le_ulp {a b : ℕ} : ulp a ≤ ulp b → ulp a ∣ ulp b := by
-  unfold ulp
-  rw [Nat.pow_dvd_pow_iff_pow_le_pow two_pos]
-  exact id
-
-theorem ulp_dvd_trunc (a : ℕ) : ulp a ∣ trunc a := Nat.dvd_mul_left _ _
-
-theorem ulp_dvd_of_trunc_eq {a : ℕ} (h : trunc a = a) : ulp a ∣ a := by
-  rw [← h, ulp_trunc_eq_ulp]
-  exact ulp_dvd_trunc a
-
-theorem trunc_eq_of_le_of_ulp_dvd {a b : ℕ} (k : b ≤ a) (h : ulp a ∣ b) :
-  trunc b = b :=
-  Nat.div_mul_cancel (dvd_trans (ulp_dvd_ulp k) h)
-
-theorem trunc_eq_iff_ulp_dvd {a : ℕ} : trunc a = a ↔ ulp a ∣ a :=
-  ⟨ulp_dvd_of_trunc_eq, trunc_eq_of_le_of_ulp_dvd le_rfl⟩
-
-theorem trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq {b : ℕ}
-  (h₂ : 0 < b) (h₁ : trunc b = b) :
-  trunc (b - 1) = b - ulp (b - 1) := by
-  unfold trunc sig
-  apply Lemmas.div_mul_pred_eq_sub_of_pos_of_dvd
-  . exact ulp_pos _
-  . exact h₂
-  . trans ulp b
-    . exact ulp_dvd_ulp (Nat.sub_le _ _)
-    . exact Trunc.ulp_dvd_of_trunc_eq h₁
-
-theorem next_trunc_pred_eq_self' {a : ℕ} (hpos : 0 < trunc a)
-  : next (trunc (trunc a - 1)) = trunc a := by
-  apply Eq.symm
-  rw [← trunc_next_comm (trunc a - 1)]
-  apply trunc_eq_trunc_of_trunc_le_of_lt_next_trunc
-  . unfold next
-    trans trunc a - 1 + 1
-    . exact le_tsub_add
-    . exact Nat.add_le_add_left (ulp_pos _) _
-  . apply add_lt_add_of_lt_of_le
-    . exact tsub_lt_self hpos zero_lt_one
-    . exact ulp_le_ulp (Nat.sub_le _ _)
-
-theorem le_next_trunc_pred' {a : ℕ}
-  : trunc a ≤ next (trunc (trunc a - 1)) := by
-  rw [← trunc_next_comm (trunc a - 1)]
-  unfold next
-  rw [← trunc_idempotent]
-  apply trunc_le_trunc
-  trans trunc a - 1 + 1
-  . exact le_tsub_add
-  . rw [trunc_idempotent]
-    exact Nat.add_le_add_left (ulp_pos _) _
-
-theorem next_trunc_pred_eq_self {a : ℕ} (hpos : 0 < a) (h : trunc a = a) :
-  next (trunc (a - 1)) = a := by
-  revert hpos
-  exact h ▸ next_trunc_pred_eq_self'
-
-theorem le_next_trunc_pred {a : ℕ} (h : trunc a = a) :
-  a ≤ next (trunc (a - 1)) := by
-  exact h ▸ le_next_trunc_pred'
-
-theorem trunc_pred_eq_trunc_of_trunc_ne_self {a : ℕ}
-  (h : trunc a ≠ a) :
-  trunc (a - 1) = trunc a := by
-  apply Eq.symm
-  apply trunc_eq_trunc_of_trunc_le_of_lt_next_trunc
+theorem trunc_pred_eq_trunc_of_trunc_ne_self {n a : ℕ} (npos : 0 < n)
+  (h : trunc n a ≠ a) :
+  trunc n (a - 1) = trunc n a := by
+  symm
+  apply trunc_eq_trunc_of_le_of_lt npos
   . apply Nat.le_pred_of_lt
-    exact Nat.lt_of_le_of_ne (trunc_le a) h
-  . exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) (lt_next_trunc a)
+    exact Nat.lt_of_le_of_ne (trunc_le n a) h
+  . exact Nat.lt_of_le_of_lt tsub_le_self (lt_next_trunc npos a)
 
-theorem trunc_trunc_sub_ulp_eq {a : ℕ} :
-  trunc (trunc a - ulp a) = trunc a - ulp a := by
-  apply trunc_eq_of_le_of_ulp_dvd
-  . exact Nat.sub_le _ _
-  . rw [ulp_trunc_eq_ulp]
-    apply Nat.dvd_sub'
-    . exact ulp_dvd_trunc _
-    . exact Nat.dvd_refl _
-
-theorem trunc_sub_ulp_eq_of_trunc_eq {a : ℕ} (h : trunc a = a) :
-  trunc (a - ulp a) = a - ulp a := by
-  rw [← h, ulp_trunc_eq_ulp]
-  exact trunc_trunc_sub_ulp_eq
-
-theorem one_le_expt_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 1 ≤ expt a := by
-  rw [← Nat.add_sub_cancel 1 n]
-  apply Nat.sub_le_sub_right
-  rw [Nat.one_add, Nat.succ_le, Nat.lt_size]
-  exact hle
-
-theorem two_le_ulp_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ≤ ulp a := by
-  rw [← pow_one 2]
-  unfold ulp expt
-  apply Nat.pow_le_pow_of_le_right two_pos
-  exact one_le_expt_of_ge hle
-
-theorem two_dvd_ulp_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ∣ ulp a := by
-  rw [← pow_one 2]
-  unfold ulp
-  rw [Nat.pow_dvd_pow_iff_pow_le_pow two_pos]
-  rw [pow_one 2]
-  exact two_le_ulp_of_ge hle
-
-theorem two_dvd_trunc_of_ge {a : ℕ} (hle : 2 ^ n ≤ a) : 2 ∣ trunc a := by
-  rw [← pow_one 2]
-  unfold trunc ulp
-  apply dvd_mul_of_dvd_right
-  apply pow_dvd_pow
-  exact one_le_expt_of_ge hle
-
-theorem ulp_mul_pow {x k : ℕ} (h : n ≤ x.size) :
-  ulp (x * 2 ^ k) = ulp x * 2 ^ k := by
-  unfold ulp expt
-  have pos : 0 < x := by
-    rw [← Nat.size_pos]
-    exact Nat.lt_of_lt_of_le n_pos h
-  rw [← pow_add, Lemmas.size_mul_pow pos, Nat.sub_add_comm h]
-
-theorem trunc_mul_pow {x k : ℕ} :
-  trunc (x * 2 ^ k) = trunc x * 2 ^ k := by
-  cases eq_or_ne x 0 with
-  | inl eq_zero =>
-    unfold trunc sig ulp expt
-    rw [eq_zero, Nat.zero_mul, Nat.zero_div, Nat.zero_mul, Nat.zero_mul]
-  | inr ne_zero =>
-    cases Nat.lt_or_ge n x.size with
-    | inr size_le =>
-      have lt : x < 2 ^ n := by
-        rw [← Nat.size_le]
-        exact size_le.le
-      have d : ulp (x * 2 ^ k) ∣ x * 2 ^ k := by
-        unfold ulp expt
-        apply dvd_mul_of_dvd_right
-        rw [Nat.pow_dvd_pow_iff_le_right one_lt_two]
-        rw [Lemmas.size_mul_pow (Nat.zero_lt_of_ne_zero ne_zero)]
-        rw [tsub_le_iff_left]
-        apply Nat.add_le_add_right
-        exact size_le
-      rw [Trunc.trunc_eq_self_of_lt lt]
-      exact trunc_eq_of_le_of_ulp_dvd le_rfl d
-    | inl lt_size =>
-      unfold trunc sig
-      rw [ulp_mul_pow (le_of_lt lt_size)]
-      rw [Nat.mul_div_mul_right _ _ Lemmas.two_pow_pos]
-      rw [Nat.mul_assoc]
-
-theorem trunc_pow_mul {x k : ℕ} :
-  trunc (2 ^ k * x) = 2 ^ k * trunc x := by
-  rw [mul_comm, trunc_mul_pow, mul_comm]
-
-theorem trunc_add_half_ulp_eq_of_size_le {x : ℕ} (size_le : x < 2 ^ n)
-  : trunc x + ulp x / 2 = x := by
-  unfold trunc sig
-  rw [Trunc.ulp_eq_one_of_lt size_le]
-  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_zero one_lt_two, Nat.add_zero]
-
-theorem trunc_add_half_ulp_eq_of_lt_size {x : ℕ} (lt_size : 2 ^ n ≤ x) :
-  2 * (trunc x + ulp x / 2) = trunc x + next (trunc x) := by
-  have ulp_even := Trunc.two_dvd_ulp_of_ge lt_size
+theorem trunc_add_half_ulp_eq_of_no_uflow
+  {n x : ℕ} (npos : 0 < n) (no_uflow : 2 ^ n ≤ x)
+: 2 * (trunc n x + ulp n x / 2) = trunc n x + next n (trunc n x) := by
+  have ulp_even := two_dvd_ulp_of_no_uflow no_uflow
   rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc, Nat.mul_comm,
-      Nat.div_mul_cancel ulp_even, ← Trunc.ulp_trunc_eq_ulp, next]
+      Nat.div_mul_cancel ulp_even, ← ulp_trunc npos, next]
 
-end Fl.Trunc
+theorem trunc_le_trunc_of_lt_next_trunc {n x y : ℕ} (npos : 0 < n)
+  (h : x < next n (trunc n y))
+: trunc n x ≤ trunc n y := by
+  cases Nat.lt_or_ge x (trunc n y) with
+  | inl lt =>
+    exact trunc_le_trunc npos (Nat.le_trans lt.le (trunc_le n y))
+  | inr ge =>
+    exact ge_of_eq (trunc_eq_trunc_of_le_of_lt npos ge.le h)
+
+theorem next_trunc_sub_eq_ulp_sub_mod {n : ℕ} (npos : 0 < n) (c : ℕ)
+: next n (trunc n c) - c = ulp n c - c % ulp n c := by
+  rewrite [next]
+  rewrite [ulp_trunc npos]
+  rewrite [trunc_eq_sub_mod]
+  rewrite [tsub_add_eq_add_tsub (Nat.mod_le _ _)]
+  rewrite [add_tsub_assoc_of_le (Nat.mod_lt _ (ulp_pos _ _)).le]
+  rw [add_tsub_cancel_left]
+
+theorem next_trunc_pred_eq_self' {n x : ℕ} (npos : 0 < n) (xpos : 0 < trunc n x)
+  : next n (trunc n (trunc n x - 1)) = trunc n x := by
+  apply Eq.symm
+  rewrite [← trunc_next_comm npos (trunc n x - 1)]
+  apply trunc_eq_trunc_of_le_of_lt npos
+  . unfold next
+    trans trunc n x - 1 + 1
+    . exact le_tsub_add
+    . exact Nat.add_le_add_left (ulp_pos n _) _
+  . apply add_lt_add_of_lt_of_le
+    . exact tsub_lt_self xpos zero_lt_one
+    . exact ulp_le_ulp n tsub_le_self

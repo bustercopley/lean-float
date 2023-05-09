@@ -5,291 +5,351 @@ import Mathlib.Data.Nat.Order.Lemmas
 import Fl.Lemmas
 import Fl.Trunc
 
-namespace Fl.Round
+def faithful₀ (n : ℕ) (round : ℕ → ℕ) := ∀ x : ℕ, trunc n x = x → round x = x
+def faithful₁ (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ x : ℕ, round x = trunc n x ∨ round x = next n (trunc n x)
+def faithful₂ (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ x : ℕ, round x = trunc n x → x - trunc n x ≤ next n (trunc n x) - x
+def faithful₃ (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ x : ℕ, round x = next n (trunc n x) → next n (trunc n x) - x ≤ x - trunc n x
 
-open Trunc.Defs
+def faithful (n : ℕ) (round : ℕ → ℕ) :=
+  faithful₀ n round ∧ faithful₁ n round ∧ faithful₂ n round ∧ faithful₃ n round
 
-namespace Defs
-
-axiom round : ℕ → ℕ
-
-def monotonic₁ := ∀ {a b c : ℕ}, trunc a = a → trunc b = b → trunc c = c →
-  a ≤ b → round (a - c) ≤ round (b - c)
-def monotonic₂ := ∀ {a b c : ℕ}, trunc a = a → trunc b = b → trunc c = c →
-  a ≤ b → round (c - b) ≤ round (c - a)
-
-end Defs
-
-open Defs
-
-namespace Faithful
-
--- Faithful axioms
-axiom a0 {x : ℕ} : trunc x = x → round x = x
-
-theorem round_trunc_eq_trunc (x : ℕ) : round (trunc x) = trunc (x) := by
-  apply a0
-  exact Trunc.trunc_idempotent x
-
-theorem round_eq_trunc_of_trunc_eq {x : ℕ} (h : trunc x = x) :
-  round x = trunc x := by
-  rw [h]
-  exact a0 h
-
-theorem round_eq_of_trunc_eq {x : ℕ} (h : trunc x = x) :
-  round x = x := by
-  exact Eq.trans (round_eq_trunc_of_trunc_eq h) h
-
-axiom a1 (x : ℕ) : round x = trunc x ∨ round x = next (trunc x)
-
-theorem trunc_eq_iff_round_eq (x : ℕ) : trunc x = x ↔ round x = x := by
-  constructor
-  . intro l
-    exact a0 l
-  . intro r
-    cases a1 x with
-    | inl lo => exact lo ▸ r
-    | inr hi =>
-      rw [r] at hi
-      apply absurd
-      . exact Trunc.lt_next_trunc x
-      . exact Eq.not_lt hi
-
-theorem trunc_le_round (x : ℕ) : trunc x ≤ round x :=
-  Or.elim (a1 x) ge_of_eq (fun hi => hi.symm ▸ Nat.le_add_right _ _)
-
-theorem round_le_next_trunc (x : ℕ) : round x ≤ next (trunc x) :=
-  Or.elim (a1 x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
-
-theorem trunc_round_eq_round (x : ℕ) : trunc (round x) = round (x) := by
-  cases a1 x with
-  | inl lo => rw [lo, Trunc.trunc_idempotent]
-  | inr hi => rw [hi, Trunc.trunc_next_comm, Trunc.trunc_idempotent]
-
-theorem round_idempotent (x : ℕ) : round (round x) = round x := by
-  rw [← trunc_eq_iff_round_eq, trunc_round_eq_round]
-
-theorem round_eq_trunc_of_le {a : ℕ} (h : round a ≤ a) : round a = trunc a := by
-  cases a1 a with
-  | inl hlo => exact hlo
-  | inr hhi =>
-    exfalso
-    apply Nat.lt_le_antisymm (Trunc.lt_next_trunc a)
-    exact hhi ▸ h
-
-theorem round_eq_trunc_iff_round_le (x : ℕ) :
-  round x = trunc x ↔ round x ≤ x :=
-  ⟨(fun h => h ▸ (Trunc.trunc_le x)), round_eq_trunc_of_le⟩
-
-theorem round_eq_next_trunc_of_gt {a : ℕ} (h : round a > a) :
-  round a = next (trunc a) := by
-  cases a1 a with
+theorem round_eq_next_trunc_of_gt {n x : ℕ} {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round) (h : round x > x) :
+  round x = next n (trunc n x) := by
+  cases hfaithful₁ x with
   | inl hlo =>
     exfalso
     apply Nat.lt_le_antisymm h
-    exact hlo ▸ (Trunc.trunc_le _)
+    exact hlo ▸ (trunc_le n x)
   | inr hhi => exact hhi
 
-theorem round_le_trunc_of_le_trunc {x y : ℕ} (h : y ≤ trunc x) :
-  round y ≤ trunc x := by
+theorem round_le_next_trunc {n : ℕ} {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round) (x : ℕ)
+: round x ≤ next n (trunc n x) :=
+  Or.elim (hfaithful₁ x) (fun lo => lo.symm ▸ Nat.le_add_right _ _) le_of_eq
+
+theorem trunc_le_round
+  (n x : ℕ) {round : ℕ → ℕ} (hfaithful₁ : faithful₁ n round)
+: trunc n x ≤ round x :=
+  Or.elim (hfaithful₁ x) ge_of_eq (fun hi => hi.symm ▸ Nat.le_add_right _ _)
+
+theorem round_trunc
+  {n : ℕ} (npos : 0 < n) (x : ℕ) {round : ℕ → ℕ} (hfaithful₀ : faithful₀ n round)
+: round (trunc n x) = trunc n x := by
+  exact hfaithful₀ (trunc n x) (trunc_idempotent npos x)
+
+theorem trunc_round
+  {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ} (hfaithful₁: faithful₁ n round) (x : ℕ)
+: trunc n (round x) = round x := by
+  cases hfaithful₁ x with
+  | inl lo => rw [lo, trunc_idempotent npos]
+  | inr hi => rw [hi, trunc_next_comm npos, trunc_idempotent npos]
+
+theorem trunc_eq_of_round_eq
+  {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ} (hfaithful₁: faithful₁ n round)
+  (round_eq : round x = x)
+: trunc n x = x := by
+  rw [← round_eq, trunc_round npos hfaithful₁ x]
+
+theorem round_eq_of_trunc_eq
+  {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ} (hfaithful₀: faithful₀ n round)
+  (trunc_eq : trunc n x = x)
+: round x = x := by
+  rw [← trunc_eq, round_trunc npos x hfaithful₀]
+
+theorem trunc_eq_iff_round_eq
+  {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₀ : faithful₀ n round) (hfaithful₁: faithful₁ n round) (x : ℕ)
+: trunc n x = x ↔ round x = x :=
+  ⟨fun h => round_eq_of_trunc_eq npos hfaithful₀ h,
+   fun h => trunc_eq_of_round_eq npos hfaithful₁ h⟩
+
+theorem round_eq_trunc_of_le {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round) (h : round x ≤ x)
+: round x = trunc n x := by
+  cases hfaithful₁ x with
+  | inl hlo => exact hlo
+  | inr hhi =>
+    exfalso
+    apply Nat.lt_le_antisymm (lt_next_trunc npos x)
+    exact hhi ▸ h
+
+theorem round_eq_trunc_iff_round_le {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round) (x : ℕ):
+  round x = trunc n x ↔ round x ≤ x :=
+  ⟨(fun h => h ▸ (trunc_le n x)), round_eq_trunc_of_le npos hfaithful₁⟩
+
+theorem round_next_trunc {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₀ : faithful₀ n round) (x : ℕ)
+: round (next n (trunc n x)) = next n (trunc n x) := by
+  apply round_eq_of_trunc_eq npos hfaithful₀
+  exact trunc_next_trunc npos x
+
+theorem round_zero {n : ℕ}
+  (npos : 0 < n) {round : ℕ → ℕ} (hfaithful₀ : faithful₀ n round)
+: round 0 = 0 := round_eq_of_trunc_eq npos hfaithful₀ (trunc_zero n)
+
+theorem round_eq_next_trunc_of_midpoint_lt {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₀ : faithful₂ n round)
+  (h : x > trunc n x + ulp n x / 2) :
+  round x = next n (trunc n x) := by
+  cases lt_or_ge n (Nat.size x) with
+  | inr uflow =>
+    exfalso
+    have trunc_eq : trunc n x = x := by
+      unfold trunc ulp expt
+      rewrite [Nat.sub_eq_zero_of_le uflow]
+      rw [Nat.pow_zero, Nat.mul_one, Nat.div_one]
+    rewrite [trunc_eq] at h
+    exact Nat.lt_le_antisymm h $ Nat.le_add_right _ _
+  | inl no_uflow =>
+    have expt_pos : 0 < (Nat.size x) - n := lt_tsub_of_add_lt_left no_uflow
+    have ulp_even : 2 ∣ ulp n x := dvd_pow_self _ (ne_zero_of_lt expt_pos)
+    have h : next n (trunc n x) - x < x - trunc n x := by
+      rewrite [tsub_lt_iff_left (lt_next_trunc npos x).le]
+      rewrite [← Nat.add_sub_assoc $ trunc_le _ _]
+      -- ⊢ x < trunc n x + next (trunc n x) - x
+      unfold next
+      rewrite [ulp_trunc npos]
+      rewrite [lt_tsub_iff_left]
+      rewrite [← Nat.add_assoc]
+      rewrite [← Nat.div_mul_cancel ulp_even]
+      rewrite [← mul_two, ← mul_two, ← add_mul]
+      exact Nat.mul_lt_mul_of_pos_right h two_pos
+    cases hfaithful₁ x with
+    | inl lo => exfalso ; exact Nat.lt_le_antisymm h $ hcorrect₀ x lo
+    | inr hi => exact hi
+
+theorem le_midpoint_of_round_eq_trunc
+  {n x : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+  (hcorrect₀ : faithful₂ n round) (hlo : round x = trunc n x)
+: x ≤ trunc n x + ulp n x / 2 := by
+  cases Nat.lt_or_ge x (2 ^ n) with
+  | inl uflow =>
+    exact ge_of_eq (trunc_add_half_ulp_eq_of_uflow uflow)
+  | inr no_uflow =>
+    refine Nat.le_of_mul_le_mul_left ?_ two_pos
+    rewrite [trunc_add_half_ulp_eq_of_no_uflow npos no_uflow]
+    have h1 : x ≤ next n (trunc n x) := Nat.le_of_lt (lt_next_trunc npos x)
+    have h2 : trunc n x ≤ x := trunc_le n x
+    rewrite [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h2,
+        Nat.add_comm, ← Nat.le_sub_iff_add_le h1]
+    exact hcorrect₀ x hlo
+
+theorem round_eq_trunc_of_lt_midpoint {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₀ : faithful₀ n round)
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₁ : faithful₃ n round)
+  (h : x < trunc n x + ulp n x / 2) :
+  round x = trunc n x := by
+  cases lt_or_ge n (Nat.size x) with
+  | inr uflow =>
+    have trunc_eq : trunc n x = x := by
+      unfold trunc ulp expt
+      rewrite [Nat.sub_eq_zero_of_le uflow]
+      rw [Nat.pow_zero, Nat.mul_one, Nat.div_one]
+    rw [round_eq_of_trunc_eq npos hfaithful₀ trunc_eq, trunc_eq]
+  | inl no_uflow =>
+    have expt_pos : 0 < (Nat.size x) - n := lt_tsub_of_add_lt_left no_uflow
+    have ulp_even : 2 ∣ ulp n x := dvd_pow_self _ (ne_zero_of_lt expt_pos)
+    have h : x - trunc n x < next n (trunc n x) - x := by
+      rewrite [tsub_lt_iff_left (trunc_le n x)]
+      rewrite [← Nat.add_sub_assoc (le_of_lt (lt_next_trunc npos x))]
+      -- ⊢ x < trunc n x + next (trunc n x) - x
+      unfold next
+      rewrite [ulp_trunc npos]
+      rewrite [lt_tsub_iff_left]
+      rewrite [← Nat.add_assoc]
+      rewrite [← Nat.div_mul_cancel ulp_even]
+      rewrite [← mul_two, ← mul_two, ← add_mul]
+      exact Nat.mul_lt_mul_of_pos_right h two_pos
+    cases hfaithful₁ x with
+    | inl lo => exact lo
+    | inr hi => exfalso ; exact Nat.lt_le_antisymm h $ hcorrect₁ x hi
+
+theorem midpoint_le_of_round_eq_next_trunc
+  {n x : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+  (hcorrect₁ : faithful₃ n round) (hhi : round x = next n (trunc n x))
+: trunc n x + ulp n x / 2 ≤ x := by
+  cases Nat.lt_or_ge x (2 ^ n) with
+  | inl uflow =>
+    exact le_of_eq (trunc_add_half_ulp_eq_of_uflow uflow)
+  | inr no_uflow =>
+    refine Nat.le_of_mul_le_mul_left ?_ two_pos
+    rewrite [trunc_add_half_ulp_eq_of_no_uflow npos no_uflow]
+    have h1 : x ≤ next n (trunc n x) := Nat.le_of_lt (lt_next_trunc npos x)
+    have h2 : trunc n x ≤ x := trunc_le n x
+    rewrite [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h1,
+             Nat.add_comm, ← Nat.le_sub_iff_add_le h2]
+    exact hcorrect₁ x hhi
+
+theorem round_le_trunc_of_le_trunc {n x y : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+  (hfaithful₀ : faithful₀ n round)
+  (hfaithful₁ : faithful₁ n round)
+  (h : y ≤ trunc n x)
+: round y ≤ trunc n x := by
   cases Nat.lt_or_eq_of_le h with
   | inl lt => -- lt : y < trunc x
     have pos := Nat.zero_lt_of_lt lt
-    rewrite [← Trunc.next_trunc_pred_eq_self' pos]
+    rewrite [← next_trunc_pred_eq_self' npos pos]
     apply Nat.le_trans
-    . exact round_le_next_trunc y
-    . apply Trunc.next_le_next
-      apply Trunc.trunc_le_trunc
+    . exact round_le_next_trunc hfaithful₁ y
+    . apply next_le_next
+      apply trunc_le_trunc npos
       apply Nat.le_pred_of_lt
       exact lt
   | inr eq => -- eq : y = trunc x
-    rw [eq, round_trunc_eq_trunc]
+    rw [eq, round_trunc npos x hfaithful₀]
 
-theorem round_sub_le_of_trunc_eq (a : ℕ) {b : ℕ} (h : trunc b = b) :
+theorem round_sub_le {b n : ℕ} (npos : 0 < n)
+  (hfaithful₀ : faithful₀ n round)
+  (hfaithful₁ : faithful₁ n round)
+  (a : ℕ) (h : trunc n b = b) :
   round (b - a) ≤ b := by
-  trans trunc b
-  . apply Round.Faithful.round_le_trunc_of_le_trunc
-    exact Nat.le_trans (Nat.sub_le _ _) h.ge
-  . exact Trunc.trunc_le _
+  trans trunc n b
+  . apply round_le_trunc_of_le_trunc npos hfaithful₀ hfaithful₁
+    exact Nat.le_trans tsub_le_self h.ge
+  . exact trunc_le _ _
 
-end Faithful
-
-namespace Correct
-
-open Faithful
-
--- Correctly rounding axioms
-axiom a2 {x : ℕ} : round x = trunc x → x - trunc x ≤ next (trunc x) - x
-axiom a3 {x : ℕ} : round x = next (trunc x) → next (trunc x) - x ≤ x - trunc x
-
-theorem a2' {x : ℕ} (h : x - trunc x < next (trunc x) - x) :
-  round x = trunc x :=
-    Or.elim (a1 x) id (fun r => False.elim ((not_lt_of_ge (a3 r)) h))
-
-theorem a3' {x : ℕ} (h : next (trunc x) - x < x - trunc x) :
-  round x = next (trunc x) :=
-    Or.elim (a1 x) (fun l => False.elim ((not_lt_of_ge (a2 l)) h)) id
-
-theorem a2'' {x : ℕ} (h : x < trunc x + ulp x / 2) :
-  round x = trunc x := by
-  cases lt_or_ge n x.size with
-  | inr size_le => -- size_le : x.size ≤ n
-    apply Faithful.round_eq_trunc_of_trunc_eq
-    unfold trunc sig ulp expt
-    rw [Nat.sub_eq_zero_of_le size_le]
-    rw [Nat.pow_zero, Nat.mul_one, Nat.div_one]
-  | inl lt_size => -- lt_size : n < x.size
-    have expt_pos : 0 < x.size - n := lt_tsub_of_add_lt_left lt_size
-    have ulp_even : 2 ∣ ulp x := dvd_pow_self _ (ne_zero_of_lt expt_pos)
-    apply a2'
-    rw [tsub_lt_iff_left (Trunc.trunc_le x)]
-    rw [← Nat.add_sub_assoc (le_of_lt (Trunc.lt_next_trunc x))]
-    -- ⊢ x < trunc x + next (trunc x) - x
-    unfold next
-    rw [Trunc.ulp_trunc_eq_ulp]
-    rw [lt_tsub_iff_left]
-    rw [← Nat.add_assoc]
-    rw [← Nat.div_mul_cancel ulp_even]
-    rw [← mul_two, ← mul_two, ← add_mul]
-    exact Nat.mul_lt_mul_of_pos_right h two_pos
-
-theorem a3'' {x : ℕ} (h : trunc x + ulp x / 2 < x) :
-  round x = next (trunc x) := by
-  cases lt_or_ge n x.size with
-  | inr size_le => -- size_le : n ≥ x.size
-    rw [ge_iff_le, Nat.size_le] at size_le
-    rw [Trunc.trunc_eq_self_of_lt size_le] at h
-    exact absurd (Nat.le_add_right _ _) (not_le_of_gt h)
-  | inl lt_size => -- lt_size : n < Nat.size x
-    have expt_pos : 0 < x.size - n := lt_tsub_of_add_lt_left lt_size
-    have ulp_even : 2 ∣ ulp x := dvd_pow_self _ (ne_zero_of_lt expt_pos)
-    apply a3'
-    rw [tsub_lt_iff_left (le_of_lt (Trunc.lt_next_trunc x))]
-    rw [←Nat.add_sub_assoc (Trunc.trunc_le x)]
-    unfold next
-    rw [Trunc.ulp_trunc_eq_ulp]
-    rw [lt_tsub_iff_left]
-    rw [← Nat.add_assoc]
-    rw [← Nat.div_mul_cancel ulp_even]
-    rw [← mul_two, ← mul_two, ← add_mul]
-    exact Nat.mul_lt_mul_of_pos_right h two_pos
-
-theorem a2''' {x : ℕ} (hf : round x = trunc x) :
-  x ≤ trunc x + ulp x / 2 := by
-  cases Nat.lt_or_ge x (2 ^ n) with
-  | inl size_le =>
-    exact ge_of_eq (Trunc.trunc_add_half_ulp_eq_of_size_le size_le)
-  | inr lt_size =>
-    refine Nat.le_of_mul_le_mul_left ?_ two_pos
-    rw [Trunc.trunc_add_half_ulp_eq_of_lt_size lt_size]
-    have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
-    have h2 : trunc x ≤ x := Trunc.trunc_le _
-    rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h2, Nat.add_comm,
-        ← Nat.le_sub_iff_add_le h1]
-    exact a2 hf
-
-theorem a3''' {x : ℕ} (hf : round x = next (trunc x)) :
-  trunc x + ulp x / 2 ≤ x := by
-  cases Nat.lt_or_ge x (2 ^ n) with
-  | inl size_le =>
-    exact le_of_eq (Trunc.trunc_add_half_ulp_eq_of_size_le size_le)
-  | inr lt_size =>
-    refine Nat.le_of_mul_le_mul_left ?_ two_pos
-    rw [Trunc.trunc_add_half_ulp_eq_of_lt_size lt_size]
-    have h1 : x ≤ next (trunc x) := Nat.le_of_lt (Trunc.lt_next_trunc x)
-    have h2 : trunc x ≤ x := Trunc.trunc_le _
-    rw [Nat.two_mul, ← tsub_le_iff_left, Nat.add_sub_assoc h1, Nat.add_comm,
-        ← Nat.le_sub_iff_add_le h2]
-    exact a3 hf
-
-theorem round_eq_trunc_add_half {x : ℕ} :
-  x = trunc x + ulp x / 2 ∨ round x = trunc (x + ulp x / 2) := by
-  cases Nat.lt_or_ge x (2 ^ n) with
-  | inl size_le => -- size_le : x < 2 ^ n
-    apply Or.inl
-    rw [Trunc.trunc_add_half_ulp_eq_of_size_le size_le]
-  | inr lt_size => -- lt_size : n < x.size
-    cases eq_or_ne x (trunc x + ulp x / 2) with
-    | inl eq => exact Or.inl eq
-    | inr ne => -- ne : x ≠ trunc x + ulp x / 2
-      apply Or.inr
-      rw [ge_iff_le, ← Nat.lt_size] at lt_size
-      have expt_pos : 0 < expt x := Nat.zero_lt_sub_of_lt lt_size
-      have ulp_even : 2 ∣ ulp x := dvd_pow_self 2 (ne_zero_of_lt expt_pos)
-      cases le_or_gt x (trunc x + ulp x / 2) with
-      | inl le => -- le : x ≤ trunc x + ulp x / 2
-        have lt := Nat.lt_of_le_of_ne le ne
-        rw [a2'' lt]
-        apply Trunc.trunc_eq_trunc_of_trunc_le_of_lt_next_trunc
-        .  exact Nat.le_trans (Trunc.trunc_le x) (Nat.le_add_right _ _)
-        .  rw [next, Trunc.ulp_trunc_eq_ulp]
-           rw [← lt_tsub_iff_right]
-           rw [add_tsub_assoc_of_le (Nat.div_le_self _ _)]
-           rw [Fl.Lemmas.sub_half_of_even ulp_even]
-           exact lt
-      | inr gt => -- gt : x > trunc x + ulp x / 2
-        rw [a3'' gt]
-        rw [← Trunc.trunc_next_comm]
-        apply Trunc.trunc_eq_trunc_of_trunc_le_of_lt_next_trunc
-        . rw [Trunc.trunc_next_comm, next, Trunc.ulp_trunc_eq_ulp]
-          rw [← tsub_le_iff_right]
-          rw [add_tsub_assoc_of_le (Nat.div_le_self _ _)]
-          rw [Fl.Lemmas.sub_half_of_even ulp_even]
-          exact le_of_lt gt
-        . rw [next, Trunc.ulp_trunc_eq_ulp]
-          apply add_lt_add_of_lt_of_le (Trunc.lt_trunc_next x)
-          transitivity ulp x
-          . exact Nat.div_le_self _ _
-          . apply Trunc.ulp_le_ulp
-            exact Nat.le_add_right _ _
-
-theorem nearest {x : ℕ} :
-  (round x = trunc x ∧ x - trunc x ≤ next (trunc x) - x) ∨
-  (round x = next (trunc x) ∧ next (trunc x) - x ≤ x - trunc x) :=
-  Or.elim (a1 x) (fun lo => Or.inl ⟨lo, a2 lo⟩) (fun hi => Or.inr ⟨hi, a3 hi⟩)
-
--- Monotonicity follows from correct rounding
-
-theorem round_le_round {a b : ℕ}  (hle : a ≤ b) : round a ≤ round b := by
-  have lolo : trunc a ≤ trunc b := Trunc.trunc_le_trunc hle
-  have lohi : trunc a ≤ next (trunc b) :=
+-- Correct rounding implies monotonicity
+theorem round_le_round {n a b : ℕ} {round : ℕ → ℕ}
+  (npos : 0 < n)
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₀ : faithful₂ n round)
+  (hcorrect₁ : faithful₃ n round)
+  (hba : b ≤ a)
+: round b ≤ round a := by
+  have lolo : trunc n b ≤ trunc n a := trunc_le_trunc npos hba
+  have lohi : trunc n b ≤ next n (trunc n a) :=
     Nat.le_trans lolo (Nat.le_add_right _ _)
-  have hihi : next (trunc a) ≤ next (trunc b) :=
-    Nat.add_le_add lolo (Trunc.ulp_le_ulp lolo)
-  rcases a1 a, (a1 b).symm with ⟨alo | ahi, bhi | blo⟩
-  . rwa [alo, bhi]
-  . rwa [alo, blo]
-  . rwa [ahi, bhi]
-  . cases eq_or_ne a b with
+  have hihi : next n (trunc n b) ≤ next n (trunc n a) :=
+    Nat.add_le_add lolo (ulp_le_ulp n lolo)
+  rcases hfaithful₁ b, (hfaithful₁ a).symm with ⟨blo | bhi, ahi | alo⟩
+  . rwa [blo, ahi]
+  . rwa [blo, alo]
+  . rwa [bhi, ahi]
+  . cases eq_or_ne b a with
     | inl eq => exact eq ▸ le_rfl
     | inr ne =>
-      rw [ahi, blo]
+      rewrite [bhi, alo]
       apply Nat.le_of_not_lt
-      intro (lt_next_trunc : trunc b < next (trunc a))
-      have trunc_eq : trunc b = trunc a := by
+      intro (lt_next_trunc : trunc n a < next n (trunc n b))
+      have trunc_eq : trunc n a = trunc n b := by
         apply Nat.le_antisymm
-        . rw [← Trunc.trunc_idempotent b]
-          exact Trunc.trunc_le_trunc_of_lt_next_trunc lt_next_trunc
+        . rewrite [← trunc_idempotent npos a]
+          exact trunc_le_trunc_of_lt_next_trunc npos lt_next_trunc
         . exact lolo
-      have ulp_eq : ulp b = ulp a := by
-        rw [← Trunc.ulp_trunc_eq_ulp a, ← Trunc.ulp_trunc_eq_ulp b, trunc_eq]
-      apply Nat.lt_le_antisymm (lt_of_le_of_ne hle ne)
-      trans trunc b + ulp b / 2
-      . exact a2''' blo
-      . rw [trunc_eq, ulp_eq]
-        exact a3''' ahi
+      have ulp_eq : ulp n a = ulp n b := by
+        rw [← ulp_trunc npos b, ← ulp_trunc npos a, trunc_eq]
+      apply Nat.lt_le_antisymm (lt_of_le_of_ne hba ne)
+      trans trunc n a + ulp n a / 2
+      . exact le_midpoint_of_round_eq_trunc npos hcorrect₀ alo
+      . rewrite [trunc_eq, ulp_eq]
+        exact midpoint_le_of_round_eq_next_trunc npos hcorrect₁ bhi
 
-theorem monotonic : monotonic₁ ∧ monotonic₂ := by
+theorem round_next_of_carry_of_no_uflow {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₀ : faithful₀ n round)
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₁ : faithful₃ n round)
+  (x : ℕ)
+  (carry : 2 ^ Nat.size x ≤ next n x) (no_uflow : n ≤ Nat.size x)
+: round (next n x) = trunc n (next n x) := by
+  have lt : next n x < trunc n (next n x) + ulp n (next n x) / 2 := calc
+    next n x = x + ulp n x       := rfl
+    _ = x + ulp n x * 2 / 2      := by rw [Nat.mul_div_cancel _ two_pos]
+    _ = x + ulp n (next n x) / 2 := by rw [ulp_next_of_carry_of_no_uflow carry no_uflow]
+    _ < trunc n (next n x) + ulp n (next n x) / 2 := by
+      apply Nat.add_lt_add_right
+      exact lt_trunc_next npos _
+  exact round_eq_trunc_of_lt_midpoint npos hfaithful₀ hfaithful₁ hcorrect₁ lt
+
+theorem round_next_comm {n : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₁ : faithful₃ n round)
+  (x : ℕ)
+: ∃ d : ℕ, round (next n x) = round x + d * ulp n x ∧ (d = 0 ∨ d = 1 ∨ d = 2) := by
+  have ulp_next : ulp n (next n x) = ulp n (trunc n x + ulp n x) := calc
+    ulp n (next n x) = ulp n (trunc n (next n x)) := by rw [ulp_trunc npos]
+    _ = ulp n (next n (trunc n x))                := by rw [trunc_next_comm npos]
+    _ = ulp n (trunc n x + ulp n (trunc n x))     := rfl
+    _ = ulp n (trunc n x + ulp n x)               := by rw [ulp_trunc npos]
+  cases hfaithful₁ (next n x) with
+  | inl nlo =>
+    rewrite [trunc_next_comm npos] at nlo
+    rewrite [← ulp_trunc npos]
+    cases hfaithful₁ x with
+    | inl lo =>
+      apply Exists.intro 1
+      rewrite [lo, Nat.one_mul, ← next]
+      exact ⟨nlo, by simp only⟩
+    | inr hi =>
+      apply Exists.intro 0
+      rewrite [hi, Nat.zero_mul, Nat.add_zero]
+      exact ⟨nlo, by simp only⟩
+  | inr nhi =>
+    cases Nat.lt_or_ge (next n x) (2 ^ Nat.size x) with
+    | inl no_carry =>
+      rewrite [trunc_next_comm npos, next, next, next, ulp_trunc npos] at nhi
+      rewrite [← ulp_next, ulp_next_of_no_carry no_carry] at nhi
+      cases hfaithful₁ x with
+      | inl lo =>
+        apply Exists.intro 2
+        rewrite [lo, Nat.two_mul, next, ← Nat.add_assoc]
+        exact ⟨nhi, by simp only⟩
+      | inr hi =>
+        apply Exists.intro 1
+        rewrite [hi, Nat.one_mul, next, next, ulp_trunc npos]
+        exact ⟨nhi, by simp only⟩
+    | inr carry =>
+      cases Nat.lt_or_ge (Nat.size x) n with
+      | inl uflow =>
+        have uflow' : x < 2 ^ n := by
+          rewrite [← Nat.size_le]
+          exact uflow.le
+        have ulp_eq : ulp n (next n x) = ulp n x := by
+          rw [ulp_next_of_carry_of_uflow carry uflow, ulp_eq_one_of_uflow uflow']
+        have h : next n (next n (trunc n x)) = trunc n x + ulp n x + ulp n x := by
+          unfold next
+          rw [ulp_trunc npos, ← ulp_next, ulp_eq, Nat.add_assoc]
+        rewrite [trunc_next_comm npos, h] at nhi
+        cases hfaithful₁ x with
+        | inl lo =>
+          apply Exists.intro 2
+          rewrite [lo, Nat.two_mul, ← Nat.add_assoc]
+          exact ⟨nhi, by simp only⟩
+        | inr hi =>
+          apply Exists.intro 1
+          rewrite [hi, Nat.one_mul, next, next, ulp_trunc npos]
+          exact ⟨nhi, by simp only⟩
+      | inr no_uflow =>
+        have lt : next n x < trunc n (next n x) + ulp n (next n x) / 2 := calc
+          next n x = x + ulp n x := rfl
+          _ = x + ulp n x * 2 / 2      := by rw [Nat.mul_div_cancel _ two_pos]
+          _ = x + ulp n (next n x) / 2 := by rw [ulp_next_of_carry_of_no_uflow carry no_uflow]
+          _ < trunc n (next n x) + ulp n (next n x) / 2 := by
+            apply Nat.add_lt_add_right
+            exact lt_trunc_next npos _
+        exfalso
+        apply Nat.lt_le_antisymm lt
+        exact midpoint_le_of_round_eq_next_trunc npos hcorrect₁ nhi
+
+theorem monotonic
+  {n : ℕ} {round : ℕ → ℕ}
+  (npos : 0 < n)
+  (hfaithful₁ : faithful₁ n round)
+  (hcorrect₀ : faithful₂ n round)
+  (hcorrect₁ : faithful₃ n round)
+: sub_left_monotonic n round ∧ sub_right_monotonic n round := by
   constructor
-  . unfold monotonic₁
+  . unfold sub_left_monotonic
     intro a b c _ _ _ hab
-    apply round_le_round
-    exact Nat.sub_le_sub_right hab _
-  . unfold monotonic₂
-    intro a b c _ _ _ hab
-    apply round_le_round
+    apply round_le_round npos hfaithful₁ hcorrect₀ hcorrect₁
     exact Nat.sub_le_sub_left _ hab
-
-end Correct
-
-end Fl.Round
+  . unfold sub_right_monotonic
+    intro a b c _ _ _ hab
+    apply round_le_round npos hfaithful₁ hcorrect₀ hcorrect₁
+    exact Nat.sub_le_sub_right hab _
