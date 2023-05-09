@@ -4,19 +4,6 @@ import Mathlib.Data.Nat.Order.Lemmas
 
 theorem two_pow_pos {m : ℕ} : 0 < 2 ^ m := Nat.pos_pow_of_pos m two_pos
 
-theorem lt_of_pos_of_le_sub_one {m n : ℕ} (k : 0 < n) (h : m ≤ n - 1) : m < n :=
-  Nat.sub_add_cancel k ▸ (Nat.add_le_add_right h 1)
-
-theorem le_sub_one_iff_lt_of_pos {m n : ℕ} (k : 0 < n) : m ≤ n - 1 ↔ m < n :=
-  ⟨lt_of_pos_of_le_sub_one k, Nat.le_pred_of_lt⟩
-
-theorem sub_one_lt_of_pos_of_le {m n : ℕ} (h : 0 < m) : m ≤ n → m - 1 < n := by
-  rewrite [← Nat.sub_add_cancel h]
-  exact id
-
-theorem le_iff_sub_one_lt_of_pos {m n : ℕ} (h : 0 < m) : m ≤ n ↔ m - 1 < n := by
-  exact ⟨sub_one_lt_of_pos_of_le h, Nat.le_of_pred_lt⟩
-
 theorem tsub_tsub_assoc' {a b c : ℕ} (h₁ : b ≤ c + a) (h₂ : c ≤ b)
 : a - (b - c) = a + c - b := by
   apply tsub_eq_of_eq_add
@@ -193,61 +180,3 @@ theorem size_div_mul {x m : ℕ} (h : 2 ^ m ≤ x)
   calc 2 ^ Nat.pred m
     ≤ 2 ^ m := Nat.pow_le_pow_of_le_right two_pos (Nat.pred_le m)
     _ ≤ x := h
-
-theorem size_pred_lt_size_iff_pow {a : ℕ} (h : 0 < a) :
-  a = 2 ^ (Nat.size a - 1) ↔ Nat.size (a - 1) < Nat.size a := by
-  have size_pos : 0 < Nat.size a := by
-    rewrite [Nat.size_pos]
-    exact h
-  apply Iff.intro
-  . intro hl
-    rewrite [← le_sub_one_iff_lt_of_pos size_pos]
-    rewrite [Nat.size_le]
-    rewrite [← le_iff_sub_one_lt_of_pos h]
-    exact le_of_eq hl
-  . intro hr
-    apply le_antisymm
-    . apply Nat.le_of_pred_lt
-      rewrite [← Nat.size_le]
-      rewrite [← Nat.lt_iff_le_pred size_pos]
-      exact hr
-    . exact le_size_of_pos h
-
-theorem pred_size_le_size_pred {a : ℕ} (h : 0 < a) :
-  Nat.size a - 1 ≤ Nat.size (a - 1) := by
-  cases le_or_gt 2 a with
-  | inl two_le =>
-  . have h' : 2 ^ (Nat.size a - 1 - 1) ≤ a := by
-      trans 2 ^ (Nat.size a - 1)
-      . apply Nat.pow_le_pow_of_le_right two_pos
-        exact tsub_le_self
-      . exact le_size_of_pos h
-    have one_lt_size : 1 < Nat.size a := Nat.lt_size.mpr two_le
-    have one_le_size_sub_one : 1 ≤ Nat.size a - 1 := Nat.le_pred_of_lt one_lt_size
-    apply Nat.le_of_pred_lt
-    rewrite [Nat.pred_eq_sub_one]
-    rewrite [Nat.lt_size]
-    trans a - 2 ^ (Nat.size a - 1 - 1)
-    . rewrite [Nat.le_sub_iff_add_le h']
-      rewrite [← two_mul, ← pow_succ]
-      rewrite [← Nat.lt_size]
-      rewrite [← Nat.add_one_le_iff]
-      rewrite [Nat.sub_add_cancel one_le_size_sub_one]
-      rw [Nat.sub_add_cancel (le_of_lt one_lt_size)]
-    . exact tsub_le_tsub_left (Nat.succ_le_of_lt two_pow_pos) a
-  | inr lt_two =>
-    have eq_one : a = 1 := Nat.eq_of_le_of_lt_succ h lt_two
-    rewrite [eq_one, Nat.sub_self, Nat.size_zero, Nat.size_one, Nat.sub_self]
-    exact le_rfl
-
-theorem size_pred_eq_pred_size_of_eq_pow {a : ℕ} (h : 0 < a) :
-  a = 2 ^ (Nat.size a - 1) → Nat.size (a - 1) = Nat.size a - 1 := by
-  have size_pos : 0 < Nat.size a := by
-    rewrite [Nat.size_pos]
-    exact h
-  intro hl
-  apply le_antisymm
-  . rewrite [← Nat.lt_iff_le_pred size_pos]
-    rewrite [← size_pred_lt_size_iff_pow h]
-    exact hl
-  . exact pred_size_le_size_pred h
