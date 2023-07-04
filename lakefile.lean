@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package «fl» {
+package «Fl» {
   -- add any package configuration options here
 }
 
