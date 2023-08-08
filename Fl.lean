@@ -10,20 +10,38 @@ import Fl.Round
 -- and the Cost of Accurate Computations
 -- Douglas M. Priest (1992) (Ph. D. Thesis)
 
--- For all x ∈ ℕ we say is a *floating point number* if trunc x = x.
+-- Given a natural number n (the size in bits of the significand),
+-- for all x ∈ ℕ we say x is a "floating point number" if trunc n x = x.
 
--- A *floating point arithmetic* is a mapping which assigns to each
+-- In Priest, a "floating point arithmetic" is a mapping which assigns to each
 -- triple (a, b, ∘) where a and b are floating point numbers and ∘ is one of
 -- the operations + - × / another floating point number fl (a ∘ b), provided
 -- b ≠ 0 when ∘ is /.
 
--- The arithmetic is *faithful* if:
+-- Other authors, e.g., Knuth, use the notation "a ⊕ b" for "fl (a + b)", etc..
+-- Note that "fl" does not denote a function.
+
+-- For any real x, denote by ⌈x⌉ the smallest floating point number not greater
+-- than x, and by ⌊x⌋ the largest floating point number not smaller than x.
+
+-- The arithmetic is "faithful" if:
 -- (i)  Whenever a ∘ b is a floating point number, fl (a ∘ b) = a ∘ b
 -- (ii) Otherwise, fl (a ∘ b) is either ⌈a ∘ b⌉ or ⌊a ∘ b⌋
 
--- The arithmetic is *correctly rounding* if it is faithful and:
+-- The arithmetic is "correctly rounding" if it is faithful and:
 -- (i)  fl (a ∘ b) = ⌊a ∘ b⌋ if a ∘ b - ⌊a ∘ b⌋ < ⌈a ∘ b⌉ - a ∘ b
 -- (ii) fl (a ∘ b) = ⌈a ∘ b⌉ if a ∘ b - ⌊a ∘ b⌋ > ⌈a ∘ b⌉ - a ∘ b
+
+--   Here, though, the floating point result of subtracting b from a is
+--   expressed as "round (a - b)", where "round" is some unspecified function.
+--   This is a strictly less general formulation.
+
+--   Also note that our underlying representation of a floating point number
+--   is simply a natural number, and that "-" denotes cut subtraction.
+--   As a consequence, all floating point numbers considered here are integers;
+--   since we are concerned only with addition and subtraction, this is no loss.
+--   Furthermore, we often require several versions of each statement, to handle
+--   the signs of the arguments and results.
 
 -- Sterbenz' Lemma (Priest, p. 12):
 --    If a and b are floating point numbers such that 1 / 2 ≤ a / b ≤ 2
@@ -57,17 +75,6 @@ theorem sterbenz {n a b : ℕ}
 -- S₃ : If 0 ≤ ulp n (b) / 2 ≤ a ≤ b and c = round (b - round (b - a)
 --      satisfies c > a then round (c - d) = c - d exactly for all d ∈ [a, c]
 --      (and similarly if 0 ≥ -ulp n (b) / 2 ≥ a ≥ b).
---
--- Subtraction is *antisymmetric* if round (a - b) = -round (b - a) for all a and b.
--- It is *monotonic* if a ≤ b implies round (a - c) ≤ round (b - c) for all c.
---
--- In our formalization the floating point result of subtracting b from a is
--- expressed as 'round (b - a)' where a and b are natural numbers and '-'
--- denotes cut subtraction, but we represent the statement 'x is a floating
--- point number' in terms of the function 'trunc'. Theorem 's₁' below shows
--- that in any floating point arithmetic that can be expressed in this way,
--- property S₁ holds automatically. Theorems 's₂' and 's₃' show that properties
--- S₂ and S₃ hold on the assumption that the arithmetic is faithful.
 --
 -- Inductive step of the proof for property S₁.
 -- Let a and b be floating point numbers such that 2 * a < b.
@@ -178,7 +185,7 @@ theorem s₃' {n a b : ℕ} (npos : 0 < n)
     rewrite [Nat.two_mul, ← tsub_le_iff_right, tsub_right_comm, tsub_le_iff_left]
     calc
       b - a ≤ next n (trunc n (b - a))    := Nat.le_of_lt $ lt_next_trunc npos _
-      _ = trunc n (b - a) + ulp n (b - a) := by rw [next, ulp_trunc npos _]
+      _ = trunc n (b - a) + ulp n (b - a) := by unfold next ; rw [ulp_trunc npos _]
       _ ≤ trunc n (b - a) + ulp n b       := Nat.add_le_add_left (ulp_le_ulp n tsub_le_self) _
       _ ≤ trunc n (b - a) + a             := Nat.add_le_add_left ulp_le _
 
@@ -471,7 +478,8 @@ theorem a₁_hi_of_no_uflow_of_no_carry_of_lt_round {n a b : ℕ}
   (lt_round : a + b < round (a + b))
 : trunc n (round (a + b) - (a + b)) = round (a + b) - (a + b) := by
   apply a₁_hi_of_lt_round_of_ulp_sub_le npos hfaithful₁ hfa hfb hba lt_round
-  apply ulp_sub_le_of_no_uflow_of_no_carry_of_lt_round npos hfaithful₁ hcorrect₁ hfa no_uflow no_carry lt_round
+  exact ulp_sub_le_of_no_uflow_of_no_carry_of_lt_round npos hfaithful₁ hcorrect₁
+    hfa no_uflow no_carry lt_round
 
 theorem a₁_hi_of_ulp_le_of_lt_round
   {n a b : ℕ}
@@ -649,19 +657,26 @@ theorem a₁'
       constructor
       . exact a₁_lo_of_lt_round npos hfaithful₁ lt_round
       . cases Nat.lt_or_ge (a + b) (2 ^ Nat.size a) with
-        | inl no_carry => exact a₁_hi_of_no_uflow_of_no_carry_of_lt_round npos hfaithful₁ hcorrect₁ hfa hfb hba no_uflow no_carry lt_round
+        | inl no_carry =>
+          exact a₁_hi_of_no_uflow_of_no_carry_of_lt_round
+            npos hfaithful₁ hcorrect₁ hfa hfb hba no_uflow no_carry lt_round
         | inr carry =>
           have ulp_le : ulp n (a + b) ≤ b := by
             rewrite [← Nat.not_lt]
             intro lt_ulp
             apply Nat.lt_le_antisymm lt_round
-            exact round_le_of_no_uflow_of_carry_of_lt_ulp npos hfaithful₀ hfaithful₁ hcorrect₁ hfa hba no_uflow carry lt_ulp
+            exact round_le_of_no_uflow_of_carry_of_lt_ulp
+              npos hfaithful₀ hfaithful₁ hcorrect₁ hfa hba no_uflow carry lt_ulp
           exact a₁_hi_of_ulp_le_of_lt_round npos hfaithful₁ hfa hfb hba ulp_le lt_round
     | inr round_le =>
       constructor
       . cases Nat.lt_or_ge (a + b) (2 ^ Nat.size a) with
-        | inl no_carry => exact a₁_lo_of_no_carry_of_round_le npos hfaithful₁ hfa hfb hba no_carry round_le
-        | inr carry => exact a₁_lo_of_no_uflow_of_carry_of_round_le npos hfaithful₁ hfa hfb hba no_uflow carry round_le
+        | inl no_carry =>
+          exact a₁_lo_of_no_carry_of_round_le
+            npos hfaithful₁ hfa hfb hba no_carry round_le
+        | inr carry =>
+          exact a₁_lo_of_no_uflow_of_carry_of_round_le
+            npos hfaithful₁ hfa hfb hba no_uflow carry round_le
       . exact a₁_hi_of_round_le npos hfaithful₁ round_le
 
 -- Property A₁: The roundoff error of a floating point sum is itself a floating
@@ -1142,14 +1157,13 @@ theorem b₁ {n a b : ℕ} (npos : 0 < n)
         . -- lt_round : a - b < round (a - b)
           constructor
           . exact b₁_lo_of_lt_round npos hfaithful₁ lt_round
-          . exact b₁_hi_of_two_mul_le_of_lt_round npos hfaithful₀ hfaithful₁ hfa hfb two_mul_lt.le lt_round
+          . exact b₁_hi_of_two_mul_le_of_lt_round npos hfaithful₀ hfaithful₁
+              hfa hfb two_mul_lt.le lt_round
         . -- eq_round : a - b = round (a - b)
           exact b₁_of_round_eq eq_round.symm
         . -- round_lt : round (a - b) < a - b
           constructor
           . cases Nat.lt_or_ge b (ulp n (a - b)) with
-            | inr ulp_le =>
-              exact b₁_lo_of_round_le_of_two_mul_le_of_ulp_le npos hfaithful₁ hfa hfb round_lt.le two_mul_lt.le ulp_le
             | inl lt_ulp =>
               cases Nat.eq_or_lt_of_le (ulp_le_ulp n tsub_le_self) with
               | inl ulp_eq_ulp =>
@@ -1160,6 +1174,9 @@ theorem b₁ {n a b : ℕ} (npos : 0 < n)
                 exact b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le_ulp
                   npos hfaithful₀ hfaithful₁ hcorrect₀ hfa hfb hba
                   round_lt no_uflow ulp_lt_ulp two_mul_lt bpos lt_ulp.le
+            | inr ulp_le =>
+              exact b₁_lo_of_round_le_of_two_mul_le_of_ulp_le npos hfaithful₁
+                hfa hfb round_lt.le two_mul_lt.le ulp_le
           . exact b₁_hi_of_round_le npos hfaithful₁ round_lt.le
 
 theorem sum_and_error₂_lo

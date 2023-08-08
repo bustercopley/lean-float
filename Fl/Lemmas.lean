@@ -13,7 +13,8 @@ theorem add_tsub_assoc' {a b c : ℕ} (h₁ : b ≤ c + a) (h₂ : c ≤ b)
   rewrite [Nat.add_comm c a]
   exact add_tsub_cancel_right a c
 
-theorem sub_div_of_pos_of_dvd {x d : ℕ} (hpos : 0 < d) (hdvd : d ∣ x) : x - x / d = (d - 1) * x / d := by
+theorem sub_div_of_pos_of_dvd {x d : ℕ} (hpos : 0 < d) (hdvd : d ∣ x)
+: x - x / d = (d - 1) * x / d := by
   apply Nat.eq_of_mul_eq_mul_left hpos
   rewrite [mul_comm d, mul_comm d, Nat.mul_sub_right_distrib]
   have hdvd' : d ∣ (d - 1) * x := Nat.dvd_trans hdvd (Nat.dvd_mul_left _ _)
