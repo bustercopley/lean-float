@@ -1,4 +1,3 @@
-import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Nat.Size
 import Mathlib.Data.Nat.Order.Lemmas
 

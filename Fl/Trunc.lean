@@ -1,12 +1,9 @@
-import Mathlib.Data.Nat.Basic
-import Mathlib.Data.Nat.Size
-import Mathlib.Data.Nat.Order.Lemmas
-
 import Fl.Lemmas
 
 def expt (n x : ℕ) : ℕ := Nat.size x - n
 def ulp (n x : ℕ) : ℕ := 2 ^ expt n x
 def trunc (n x : ℕ) : ℕ := x / ulp n x * ulp n x
+
 theorem expt_le_expt (n : ℕ) {x y : ℕ} (h : x ≤ y) : expt n x ≤ expt n y := by
   unfold expt
   exact tsub_le_tsub_right (Nat.size_le_size h) n
@@ -29,12 +26,10 @@ theorem one_le_expt_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
   rewrite [Nat.add_one, Nat.succ_le, Nat.lt_size]
   exact no_uflow
 
-theorem two_le_ulp_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
-: 2 ≤ ulp n x := by
-  rewrite [← pow_one 2]
-  unfold ulp expt
-  apply Nat.pow_le_pow_of_le_right two_pos
-  exact one_le_expt_of_no_uflow no_uflow
+theorem two_dvd_ulp_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
+: 2 ∣ ulp n x := calc
+  2 = 2 ^ 1 := (Nat.pow_one ..).symm
+  _ ∣ 2 ^ expt n x := pow_dvd_pow 2 (one_le_expt_of_no_uflow no_uflow)
 
 theorem expt_eq_zero_of_uflow {n x : ℕ} (uflow: x < 2 ^ n) : expt n x = 0 :=
   tsub_eq_zero_of_le (Nat.size_le.mpr uflow)
@@ -54,35 +49,17 @@ theorem trunc_eq_self_of_uflow {n x : ℕ} (uflow : x < 2 ^ n)
   unfold trunc
   rw [ulp_eq_one_of_uflow uflow, Nat.mul_one, Nat.div_one]
 
-def sub_right_monotonic (n : ℕ) (round : ℕ → ℕ) :=
-  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
-  a ≤ b → round (a - c) ≤ round (b - c)
-
-def sub_left_monotonic (n : ℕ) (round : ℕ → ℕ) :=
-  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
-  a ≤ b → round (c - b) ≤ round (c - a)
-
 theorem ulp_dvd_ulp (n : ℕ) {x y : ℕ} (h : x ≤ y) : ulp n x ∣ ulp n y :=
   pow_dvd_pow 2 (expt_le_expt n h)
 
 theorem ulp_dvd_trunc (n a : ℕ) : ulp n a ∣ trunc n a := Nat.dvd_mul_left _ _
 
 theorem ulp_dvd_of_trunc_eq {n a : ℕ} (h : trunc n a = a)
-: ulp n a ∣ a := calc
-  _ ∣ trunc n a := ulp_dvd_trunc n a
-  _ = a               := h
-
-theorem two_dvd_ulp_of_no_uflow {n x : ℕ} (no_uflow : 2 ^ n ≤ x)
-: 2 ∣ ulp n x := by
-  rewrite [← pow_one 2]
-  unfold ulp
-  rewrite [Nat.pow_dvd_pow_iff_pow_le_pow two_pos]
-  rewrite [pow_one 2]
-  exact two_le_ulp_of_no_uflow no_uflow
+: ulp n a ∣ a := Eq.subst h (ulp_dvd_trunc n a)
 
 theorem trunc_eq_of_le_of_ulp_dvd {n y : ℕ} (x : ℕ) (hle : y ≤ x) (hdvd : ulp n x ∣ y)
 : trunc n y = y :=
-  Nat.div_mul_cancel (dvd_trans (ulp_dvd_ulp n hle) hdvd)
+  Nat.div_mul_cancel (Nat.dvd_trans (ulp_dvd_ulp n hle) hdvd)
 
 theorem trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq {x n : ℕ}
   (xpos : 0 < x) (hfx : trunc n x = x)
@@ -374,21 +351,19 @@ theorem trunc_add_half_ulp_eq_of_no_uflow
   {n x : ℕ} (npos : 0 < n) (no_uflow : 2 ^ n ≤ x)
 : 2 * (trunc n x + ulp n x / 2) = trunc n x + next n (trunc n x) := by
   have ulp_even := two_dvd_ulp_of_no_uflow no_uflow
-  rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc, Nat.mul_comm,
-      Nat.div_mul_cancel ulp_even, ← ulp_trunc npos, next]
+  rw [Nat.left_distrib, Nat.two_mul, Nat.add_assoc,
+      Nat.mul_div_cancel' ulp_even, ← ulp_trunc npos, next]
 
 theorem trunc_le_trunc_of_lt_next_trunc {n x y : ℕ} (npos : 0 < n)
   (h : x < next n (trunc n y))
 : trunc n x ≤ trunc n y := by
-  cases Nat.lt_or_ge x (trunc n y) with
-  | inl lt =>
-    exact trunc_le_trunc npos (Nat.le_trans lt.le (trunc_le n y))
-  | inr ge =>
-    exact ge_of_eq (trunc_eq_trunc_of_le_of_lt npos ge.le h)
+  cases Nat.le_total x (trunc n y) with
+  | inl hxy => exact trunc_le_trunc npos (Nat.le_trans hxy (trunc_le n y))
+  | inr hyx => exact ge_of_eq (trunc_eq_trunc_of_le_of_lt npos hyx h)
 
 theorem next_trunc_sub_eq_ulp_sub_mod {n : ℕ} (npos : 0 < n) (c : ℕ)
 : next n (trunc n c) - c = ulp n c - c % ulp n c := by
-  rewrite [next]
+  unfold next
   rewrite [ulp_trunc npos]
   rewrite [trunc_eq_sub_mod]
   rewrite [tsub_add_eq_add_tsub (Nat.mod_le _ _)]

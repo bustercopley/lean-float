@@ -1,7 +1,3 @@
-import Mathlib.Data.Nat.Basic
-import Mathlib.Data.Nat.Size
-import Mathlib.Data.Nat.Order.Lemmas
-
 import Fl.Lemmas
 import Fl.Trunc
 import Fl.Round
@@ -50,7 +46,8 @@ import Fl.Round
 -- We prove the statement in the case 0 ≤ b ≤ a ≤ 2 * b. (Then 1 ≤ a / b ≤ 2.)
 -- When 0 ≤ a < b ≤ 2 * a, the same argument with a and b exchanged shows that
 -- the nonnegative b - a is a floating point number.
-theorem sterbenz {n a b : ℕ}
+theorem sterbenz
+  {n a b : ℕ}
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : b ≤ a) (hab : a ≤ 2 * b)
 : trunc n (a - b) = a - b := by
   rewrite [Nat.two_mul] at hab
@@ -81,8 +78,8 @@ theorem sterbenz {n a b : ℕ}
 -- Suppose that b and b - a are floating point numbers.
 -- Let c be a floating point number such that 2 * a < c <= b.
 -- Then c - a is a floating point number.
-theorem s₁' {n a b x : ℕ}
-  (npos : 0 < n)
+theorem s₁'
+  {n a b x : ℕ} (npos : 0 < n)
   (hfb : trunc n b = b)
   (hf : trunc n (b - a) = b - a)
   (h : 2 * a < b - x)
@@ -111,17 +108,16 @@ theorem s₁' {n a b x : ℕ}
       rewrite [tsub_right_comm]
       rewrite [trunc_eq_iff_ulp_dvd]
       apply Nat.dvd_sub'
-      . calc
-          ulp n (b - w - a - ulp n (b - w - 1))
+      . calc ulp n (b - w - a - ulp n (b - w - 1))
           _ ∣ ulp n (b - w - a) := ulp_dvd_ulp n tsub_le_self
           _ ∣ b - w - a         := ulp_dvd_of_trunc_eq $ hfb₁ ▸ ih
       . apply ulp_dvd_ulp
-        calc
-          b - w - a - ulp n (b - w - 1)
+        calc b - w - a - ulp n (b - w - 1)
           _ ≤ b - w - a - 1 := tsub_le_tsub_left (Nat.one_le_of_lt $ ulp_pos n _) _
           _ ≤ b - w - 1     := tsub_le_tsub_right tsub_le_self _
 
-theorem s₁ {n a b c : ℕ} (npos : 0 < n)
+theorem s₁
+  {n a b c : ℕ} (npos : 0 < n)
   (hac : a ≤ c) (hcb : c ≤ b)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hfc : trunc n c = c)
   (hf : trunc n (b - a) = b - a)
@@ -135,7 +131,8 @@ theorem s₁ {n a b c : ℕ} (npos : 0 < n)
     rewrite [tsub_tsub_cancel_of_le hcb]
     exact hgt
 
-theorem s₂ {a b n : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+theorem s₂
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a)
@@ -169,7 +166,8 @@ theorem s₂ {a b n : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
 -- Let b be a floating point number such that 0 ≤ a ≤ b and ulp n b ≤ 2 * a.
 -- Let b' be the greatest floating point number not greater than b - a.
 -- Then b - b' ≤ 2 * a.
-theorem s₃' {n a b : ℕ} (npos : 0 < n)
+theorem s₃'
+  {n a b : ℕ} (npos : 0 < n)
   (hfb : trunc n b = b) (h : ulp n b ≤ 2 * a)
 : b - trunc n (b - a) ≤ 2 * a := by
   cases Nat.le_total a (ulp n b) with
@@ -189,7 +187,8 @@ theorem s₃' {n a b : ℕ} (npos : 0 < n)
       _ ≤ trunc n (b - a) + ulp n b       := Nat.add_le_add_left (ulp_le_ulp n tsub_le_self) _
       _ ≤ trunc n (b - a) + a             := Nat.add_le_add_left ulp_le _
 
-theorem s₃ {n : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+theorem s₃
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a)
@@ -218,8 +217,8 @@ theorem s₃ {n : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
     trunc_round npos hfaithful₁ (a - round (a - b))
   exact sterbenz hfe hfd hdc hcd
 
-theorem interval_shift₁ {x y z w s t n : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem interval_shift₁
+  {round : ℕ → ℕ} {x y z w s t n : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hml : sub_left_monotonic n round)
@@ -294,8 +293,8 @@ theorem interval_shift₁ {x y z w s t n : ℕ} {round : ℕ → ℕ}
     . exact s₁ npos htw hwy hft hfy hfw hfty
     . rw [tsub_eq_zero_of_le htw, trunc_zero]
 
-theorem interval_shift₂ {x y z w s t n : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem interval_shift₂
+  {round : ℕ → ℕ} {x y z w s t n : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hml : sub_left_monotonic n round)
@@ -343,8 +342,8 @@ theorem interval_shift₂ {x y z w s t n : ℕ} {round : ℕ → ℕ}
       apply s₁ npos hws hsy' hfw (trunc_round npos hfaithful₁ _) hfs
       exact s₃ npos hfaithful₀ hfaithful₁ hfx hfy hfw hyx hyw hxyulp hyy' hwy'
 
-theorem interval_shift {x y z w s t : ℕ}
-  (npos : 0 < n)
+theorem interval_shift
+  {round : ℕ → ℕ} {x y z w s t : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hml : sub_left_monotonic n round)
@@ -361,8 +360,8 @@ theorem interval_shift {x y z w s t : ℕ}
   . exact interval_shift₂ npos hfaithful₀ hfaithful₁ hml hfx hfy hfw hxy ht hs₂ hyw hwx
 
 -- Still weaker version using the correct rounding axioms
-theorem interval_shift' {x y z w s t : ℕ}
-  (npos : 0 < n)
+theorem interval_shift'
+  {round : ℕ → ℕ} {x y z w s t : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -382,8 +381,9 @@ theorem interval_shift' {x y z w s t : ℕ}
 --
 -- Theorem a₁, far below, states that if a and b are floating point numbers
 -- and 0 ≤ a and 0 ≤ b, then a + b - fl (a + b) is also a floating point number.
-theorem a₁_of_uflow {n a b : ℕ} (npos : 0 < n) (uflow : a + b < 2 ^ n)
-  {round : ℕ → ℕ} (hfaithful₀: faithful₀ n round)
+theorem a₁_of_uflow
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
+  (hfaithful₀: faithful₀ n round) (uflow : a + b < 2 ^ n)
 : trunc n (a + b - round (a + b)) = a + b - round (a + b) ∧
   trunc n (round (a + b) - (a + b)) = round (a + b) - (a + b) := by
   have k : trunc n (a + b) = a + b := trunc_eq_self_of_uflow uflow
@@ -392,23 +392,24 @@ theorem a₁_of_uflow {n a b : ℕ} (npos : 0 < n) (uflow : a + b < 2 ^ n)
   exact ⟨trunc_zero n, trunc_zero n⟩
 
 theorem a₁_lo_of_lt_round
-  {n a b : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round) (lt_round : a + b < round (a + b))
 : trunc n (a + b - round (a + b)) = a + b - round (a + b) := by
   rewrite [round_eq_next_trunc_of_gt hfaithful₁ lt_round]
   rewrite [tsub_eq_zero_of_le (Nat.le_of_lt (lt_next_trunc npos _))]
   exact trunc_zero n
 
-theorem a₁_hi_of_round_le {n a b : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
-  (hfaithful₁ : faithful₁ n round)
-  (round_le : round (a + b) ≤ a + b)
+theorem a₁_hi_of_round_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
+  (hfaithful₁ : faithful₁ n round) (round_le : round (a + b) ≤ a + b)
 : trunc n (round (a + b) - (a + b)) = round (a + b) - (a + b) := by
   rewrite [round_eq_trunc_of_le npos hfaithful₁ round_le,
       tsub_eq_zero_of_le (trunc_le n (a + b))]
   exact trunc_zero n
 
-theorem a₁_hi_of_lt_round_of_ulp_sub_le {n a b : ℕ} (npos : 0 < n)
-  {round : ℕ → ℕ} (hfaithful₁ : faithful₁ n round)
+theorem a₁_hi_of_lt_round_of_ulp_sub_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
+  (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : b ≤ a)
   (lt_round : a + b < round (a + b))
   (ulp_sub_le : ulp n (a + b) - (a + b) % ulp n (a + b) ≤ b)
@@ -430,9 +431,8 @@ theorem a₁_hi_of_lt_round_of_ulp_sub_le {n a b : ℕ} (npos : 0 < n)
         . exact ulp_dvd_of_trunc_eq hfa
       . exact ulp_dvd_of_trunc_eq hfb
 
-theorem ulp_sub_le_of_no_uflow_of_no_carry_of_lt_round {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+theorem ulp_sub_le_of_no_uflow_of_no_carry_of_lt_round
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
   (hfa : trunc n a = a)
@@ -482,9 +482,7 @@ theorem a₁_hi_of_no_uflow_of_no_carry_of_lt_round {n a b : ℕ}
     hfa no_uflow no_carry lt_round
 
 theorem a₁_hi_of_ulp_le_of_lt_round
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : b ≤ a)
   (ulp_le : ulp n (a + b) ≤ b) (lt_round : a + b < round (a + b))
@@ -493,9 +491,7 @@ theorem a₁_hi_of_ulp_le_of_lt_round
   exact Nat.le_trans tsub_le_self ulp_le
 
 theorem a₁_lo_of_no_carry_of_round_le
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : b ≤ a)
   (no_carry : a + b < 2 ^ Nat.size a)
@@ -525,9 +521,7 @@ theorem a₁_lo_of_no_carry_of_round_le
     exact ulp_dvd_of_trunc_eq hfb
 
 theorem a₁_lo_of_no_uflow_of_carry_of_round_le
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : b ≤ a)
   (no_uflow : 2 ^ n ≤ a + b) (carry : 2 ^ Nat.size a ≤ a + b)
@@ -585,9 +579,7 @@ theorem a₁_lo_of_no_uflow_of_carry_of_round_le
       exact ulp_dvd_of_trunc_eq hfb
 
 theorem round_le_of_no_uflow_of_carry_of_lt_ulp
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
@@ -640,9 +632,7 @@ theorem round_le_of_no_uflow_of_carry_of_lt_ulp
   exact trunc_le _ _
 
 theorem a₁'
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
@@ -650,7 +640,7 @@ theorem a₁'
 : trunc n (a + b - round (a + b)) = a + b - round (a + b) ∧
   trunc n (round (a + b) - (a + b)) = round (a + b) - (a + b) := by
   cases Nat.lt_or_ge (a + b) (2 ^ n) with
-  | inl uflow => exact a₁_of_uflow npos uflow hfaithful₀
+  | inl uflow => exact a₁_of_uflow npos hfaithful₀ uflow
   | inr no_uflow =>
     cases Nat.lt_or_ge (a + b) (round (a + b)) with
     | inl lt_round =>
@@ -682,9 +672,7 @@ theorem a₁'
 -- Property A₁: The roundoff error of a floating point sum is itself a floating
 -- point number.
 theorem a₁
-  {n a b : ℕ}
-  (npos : 0 < n)
-  {round : ℕ → ℕ}
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
@@ -697,8 +685,8 @@ theorem a₁
     exact a₁' npos hfaithful₀ hfaithful₁ hcorrect₁ hfb hfa hab
   | inr hba => exact a₁' npos hfaithful₀ hfaithful₁ hcorrect₁ hfa hfb hba
 
-theorem sum_and_error₁_lo {n a b : ℕ} (npos : 0 < n)
-  {round : ℕ → ℕ}
+theorem sum_and_error₁_lo
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
@@ -721,8 +709,8 @@ theorem sum_and_error₁_lo {n a b : ℕ} (npos : 0 < n)
   rewrite [round_eq_of_trunc_eq npos hfaithful₀ hfr₁]
   exact add_tsub_cancel_of_le lo
 
-theorem sum_and_error₁_hi {n a b : ℕ} (npos : 0 < n)
-  {round : ℕ → ℕ}
+theorem sum_and_error₁_hi
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₁ : correct₁ n round)
@@ -741,7 +729,8 @@ theorem sum_and_error₁_hi {n a b : ℕ} (npos : 0 < n)
   rewrite [round_eq_of_trunc_eq npos hfaithful₀ hfr₂]
   exact tsub_tsub_cancel_of_le hi
 
-theorem b₁_of_round_eq {n a b : ℕ} {round : ℕ → ℕ}
+theorem b₁_of_round_eq
+  {round : ℕ → ℕ} {n a b : ℕ}
   (round_eq : round (a - b) = a - b)
 : trunc n (a - b - round (a - b)) = a - b - round (a - b) ∧
   trunc n (round (a - b) - (a - b)) = round (a - b) - (a - b) := by
@@ -749,15 +738,15 @@ theorem b₁_of_round_eq {n a b : ℕ} {round : ℕ → ℕ}
   exact ⟨rfl, rfl⟩
 
 theorem b₁_lo_of_lt_round
-  {n a b : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round) (lt_round : a - b < round (a - b))
 : trunc n (a - b - round (a - b)) = a - b - round (a - b) := by
   rewrite [round_eq_next_trunc_of_gt hfaithful₁ lt_round]
   rewrite [tsub_eq_zero_of_le $ Nat.le_of_lt $ lt_next_trunc npos _]
   exact trunc_zero n
 
-theorem b₁_hi_of_round_le {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem b₁_hi_of_round_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (round_le : round (a - b) ≤ a - b)
 : trunc n (round (a - b) - (a - b)) = round (a - b) - (a - b) := by
@@ -765,8 +754,8 @@ theorem b₁_hi_of_round_le {n a b : ℕ} {round : ℕ → ℕ}
   rewrite [tsub_eq_zero_of_le (trunc_le n (a - b))]
   exact trunc_zero n
 
-theorem ulp_sub_le_of_two_mul_le_of_lt_round {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem ulp_sub_le_of_two_mul_le_of_lt_round
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hba : 2 * b ≤ a)
@@ -788,8 +777,8 @@ theorem ulp_sub_le_of_two_mul_le_of_lt_round {n a b : ℕ} {round : ℕ → ℕ}
   rewrite [add_tsub_assoc' h₂ h₃]
   exact tsub_le_self
 
-theorem b₁_hi_of_two_mul_le_of_lt_round {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem b₁_hi_of_two_mul_le_of_lt_round
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a) (hfb : trunc n b = b) (hba : 2 * b ≤ a)
@@ -820,8 +809,8 @@ theorem b₁_hi_of_two_mul_le_of_lt_round {n a b : ℕ} {round : ℕ → ℕ}
         . exact ulp_dvd_of_trunc_eq hfa
       . exact ulp_dvd_of_trunc_eq hfb
 
-theorem b₁_lo_of_round_le_of_two_mul_le_of_ulp_le {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem b₁_lo_of_round_le_of_two_mul_le_of_ulp_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a)
   (hfb : trunc n b = b)
@@ -851,8 +840,8 @@ theorem b₁_lo_of_round_le_of_two_mul_le_of_ulp_le {n a b : ℕ} {round : ℕ �
       . exact ulp_dvd_of_trunc_eq hfa
     . exact ulp_dvd_of_trunc_eq hfb
 
-theorem b₁_lo_of_round_lt_of_ulp_le {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem b₁_lo_of_round_lt_of_ulp_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hfa : trunc n a = a)
@@ -873,8 +862,8 @@ theorem b₁_lo_of_round_lt_of_ulp_le {n a b : ℕ} {round : ℕ → ℕ}
   apply round_eq_of_trunc_eq npos hfaithful₀
   apply s₃ npos hfaithful₀ hfaithful₁ hfa hfb hfb hba le_rfl ulp_le h₀ h₀.le
 
-theorem b₁_lo_of_of_round_le_of_no_uflow_of_of_ulp_le {n a b : ℕ} {round : ℕ → ℕ}
-  (npos : 0 < n)
+theorem b₁_lo_of_of_round_le_of_no_uflow_of_of_ulp_le
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -912,9 +901,7 @@ theorem b₁_lo_of_of_round_le_of_no_uflow_of_of_ulp_le {n a b : ℕ} {round : �
   exact add_tsub_cancel_of_le round_le
 
 theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_eq_ulp_of_two_mul_lt_of_pos_of_le_ulp
-  {n a b : ℕ}
-  {round : ℕ → ℕ}
-  (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -963,8 +950,8 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_eq_ulp_of_two_mul_lt_of_pos_of_le
   . exact h₅
   . exact h₆
 
-theorem ulp_le_ulp_of_le_ulp_of_size_lt {n a b : ℕ}
-  (npos : 0 < n)
+theorem ulp_le_ulp_of_le_ulp_of_size_lt
+  {n a b : ℕ} (npos : 0 < n)
   (hfa : trunc n a = a)
   (le_ulp : b ≤ ulp n a)
   (size_lt : 2 ^ (Nat.size a - 1) < a)
@@ -988,9 +975,7 @@ theorem ulp_le_ulp_of_le_ulp_of_size_lt {n a b : ℕ}
     . exact size_lt
 
 theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le_ulp
-  {n a b : ℕ}
-  {round : ℕ → ℕ}
-  (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -1127,8 +1112,8 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le
   apply Nat.mul_le_mul_left
   exact h₃
 
-theorem b₁ {n a b : ℕ} (npos : 0 < n)
-  {round : ℕ → ℕ}
+theorem b₁
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -1180,8 +1165,7 @@ theorem b₁ {n a b : ℕ} (npos : 0 < n)
           . exact b₁_hi_of_round_le npos hfaithful₁ round_lt.le
 
 theorem sum_and_error₂_lo
-  {round : ℕ → ℕ}
-  (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)
@@ -1201,8 +1185,7 @@ theorem sum_and_error₂_lo
   exact tsub_add_cancel_of_le round_le
 
 theorem sum_and_error₂_hi
-  {round : ℕ → ℕ}
-  (npos : 0 < n)
+  {round : ℕ → ℕ} {n a b : ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (hcorrect₀ : correct₀ n round)

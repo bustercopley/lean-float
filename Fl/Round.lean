@@ -1,7 +1,3 @@
-import Mathlib.Data.Nat.Basic
-import Mathlib.Data.Nat.Size
-import Mathlib.Data.Nat.Order.Lemmas
-
 import Fl.Lemmas
 import Fl.Trunc
 
@@ -203,6 +199,14 @@ theorem round_le_round {n a b : ℕ} {round : ℕ → ℕ}
       . exact le_midpoint_of_round_eq_trunc npos hcorrect₀ alo
       . rewrite [trunc_eq, ulp_eq]
         exact midpoint_le_of_round_eq_next_trunc npos hcorrect₁ bhi
+
+def sub_right_monotonic (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
+  a ≤ b → round (a - c) ≤ round (b - c)
+
+def sub_left_monotonic (n : ℕ) (round : ℕ → ℕ) :=
+  ∀ {a b c : ℕ}, trunc n a = a → trunc n b = b → trunc n c = c →
+  a ≤ b → round (c - b) ≤ round (c - a)
 
 theorem monotonic
   {n : ℕ} {round : ℕ → ℕ}
