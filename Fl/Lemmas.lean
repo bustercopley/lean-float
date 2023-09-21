@@ -136,8 +136,8 @@ theorem lt_of_size_lt_size {x y : ℕ} (h : Nat.size x < Nat.size y)
 theorem size_mul_pow {x : ℕ} (h : 0 < x) (k : ℕ)
 : Nat.size (x * 2 ^ k) = Nat.size x + k := by
   have nz : x ≠ 0 := by rwa [← Nat.pos_iff_ne_zero]
-  rewrite [← Nat.shiftl_eq_mul_pow x k]
-  rw [Nat.size_shiftl nz]
+  rewrite [← Nat.shiftLeft_eq_mul_pow x k]
+  rw [Nat.size_shiftLeft nz]
 
 theorem size_pow_mul {x : ℕ} (h : 0 < x) (k : ℕ)
 : Nat.size (2 ^ k * x) = Nat.size x + k := by
