@@ -14,9 +14,9 @@ theorem add_tsub_assoc' {a b c : ℕ} (h₁ : b ≤ c + a) (h₂ : c ≤ b)
 
 theorem sub_div_of_pos_of_dvd {x d : ℕ} (hpos : 0 < d) (hdvd : d ∣ x)
 : x - x / d = (d - 1) * x / d := by
-  apply Nat.eq_of_mul_eq_mul_left hpos
-  rewrite [mul_comm d, mul_comm d, Nat.mul_sub_right_distrib]
   have hdvd' : d ∣ (d - 1) * x := Nat.dvd_trans hdvd (Nat.dvd_mul_left _ _)
+  apply Nat.eq_of_mul_eq_mul_right hpos
+  rewrite [Nat.mul_sub_right_distrib]
   rewrite [Nat.div_mul_cancel hdvd, Nat.div_mul_cancel hdvd']
   rewrite [Nat.sub_one, Nat.mul_pred_left]
   rw [Nat.mul_comm]
@@ -38,9 +38,8 @@ theorem add_le_of_dvd_of_dvd_of_lt {n m k : ℕ}
 theorem le_sub_of_dvd_of_dvd_of_lt {n m k : ℕ}
   (h₁ : k ∣ n) (h₂ : k ∣ m) (h₃ : n < m)
 : n ≤ m - k := by
-  rewrite [le_tsub_iff_right]
-  apply add_le_of_dvd_of_dvd_of_lt h₂ h₁ h₃
-  exact Nat.le_of_dvd (Nat.zero_lt_of_lt h₃) h₂
+  apply le_tsub_of_add_le_right
+  exact add_le_of_dvd_of_dvd_of_lt h₂ h₁ h₃
 
 theorem div_mul_eq_of_dvd_of_le_of_lt {m k x : ℕ}
   (h₁ : k ∣ m) (h₂ : m ≤ x) (h₃ : x < m + k)
@@ -94,10 +93,7 @@ theorem sub_mul_mod_self_left (x y z : ℕ) (h : y * z ≤ x)
   | Nat.succ z =>
     rewrite [Nat.mul_succ] at h
     have k : y * z ≤ x := Nat.le_trans (Nat.le_add_right _ _) h
-    have l : y ≤ x - y * z := by
-      rewrite [le_tsub_iff_right k]
-      rewrite [Nat.add_comm]
-      exact h
+    have l : y ≤ x - y * z := le_tsub_of_add_le_left h
     rewrite [Nat.mul_succ]
     rewrite [← tsub_tsub]
     rewrite [← Nat.mod_eq_sub_mod l]
@@ -170,10 +166,9 @@ theorem size_div_mul {x m : ℕ} (h : 2 ^ m ≤ x)
   apply Nat.le_of_pred_lt
   rewrite [Nat.lt_size]
   calc 2 ^ Nat.pred m
-    ≤ 2 ^ m := Nat.pow_le_pow_of_le_right two_pos (Nat.pred_le m)
-    _ ≤ x := h
+    _ ≤ 2 ^ m := Nat.pow_le_pow_of_le_right two_pos (Nat.pred_le m)
+    _ ≤ x     := h
 
 theorem mod_eq_sub_div_mul {m k : ℕ} : m % k = m - m / k * k := by
-  rewrite [eq_tsub_iff_add_eq_of_le (Nat.div_mul_le_self _ _)]
-  rewrite [Nat.add_comm]
-  exact Nat.div_add_mod' m k
+  apply eq_tsub_of_add_eq
+  exact Nat.mod_add_div' m k
