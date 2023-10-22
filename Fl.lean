@@ -84,26 +84,25 @@ theorem s₁'
   (hf : trunc n (b - a) = b - a)
   (h : 2 * a < b - x)
 : trunc n (trunc n (b - x) - a) = trunc n (b - x) - a := by
-  match x with
-  | 0 =>
-    rewrite [tsub_zero]
+  induction x with
+  | zero =>
+    rewrite [Nat.sub_zero]
     rewrite [hfb]
     exact hf
-  | w + 1 =>
-    have h' : 2 * a < b - w := by
+  | succ w ih =>
+    replace ih : trunc n (trunc n (b - w) - a) = trunc n (b - w) - a := by
+      apply ih
       apply Nat.lt_of_lt_of_le h
       apply tsub_le_tsub_left
-      exact Nat.le_add_right _ _
-    have ih : trunc n (trunc n (b - w) - a) = trunc n (b - w) - a :=
-      s₁' npos hfb hf h'
+      exact Nat.le_succ w
+    rewrite [Nat.sub_succ, Nat.pred_eq_sub_one]
     cases eq_or_ne (trunc n (b - w)) (b - w) with
     | inr ne =>
-      rewrite [← tsub_tsub]
       rewrite [trunc_pred_eq_trunc_of_trunc_ne_self npos ne]
       exact ih
     | inl hfb₁ =>
-      have bpos : 0 < b - w := Nat.zero_lt_of_lt h'
-      rewrite [← tsub_tsub]
+      have bpos : 0 < b - w :=
+        Nat.zero_lt_of_lt $ Nat.lt_pred_iff.mp $ Nat.sub_succ _ _ ▸ h
       rewrite [trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq bpos hfb₁]
       rewrite [tsub_right_comm]
       rewrite [trunc_eq_iff_ulp_dvd]
