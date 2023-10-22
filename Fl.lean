@@ -1,6 +1,8 @@
 import Fl.Lemmas
 import Fl.Trunc
 import Fl.Round
+import Mathlib.Algebra.GroupPower.Order
+import Mathlib.Tactic.LibrarySearch
 
 -- On Properties of Floating Point Arithmetics: Numerical Stability
 -- and the Cost of Accurate Computations
@@ -1087,7 +1089,7 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le
       conv => lhs ; left ; left ; rewrite [k₂]
       rewrite [Nat.add_comm]
       rewrite [Nat.add_mul_div_right _ _ (ulp_pos _ _)]
-      rewrite [Nat.div_eq_zero (tsub_lt_self (ulp_pos _ _) bpos)]
+      rewrite [Nat.div_eq_of_lt (tsub_lt_self (ulp_pos _ _) bpos)]
       rw [Nat.zero_add]
     conv => lhs ; left ; rewrite [k₂]
     rewrite [k₃]

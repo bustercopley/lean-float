@@ -42,7 +42,7 @@ theorem trunc_add_half_ulp_eq_of_uflow {n x : ℕ} (uflow : x < 2 ^ n)
 : trunc n x + ulp n x / 2 = x := by
   unfold trunc
   rewrite [ulp_eq_one_of_uflow uflow]
-  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_zero one_lt_two, Nat.add_zero]
+  rw [Nat.mul_one, Nat.div_one, Nat.div_eq_of_lt one_lt_two, Nat.add_zero]
 
 theorem trunc_eq_self_of_uflow {n x : ℕ} (uflow : x < 2 ^ n)
 : trunc n x = x := by
