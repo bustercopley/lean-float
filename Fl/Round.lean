@@ -144,7 +144,7 @@ theorem round_le_trunc_of_le_trunc {n x y : ℕ} {round : ℕ → ℕ} (npos : 0
   | inr eq => -- eq : y = trunc x
     rw [eq, round_trunc npos x hfaithful₀]
 
-theorem round_sub_le {a n : ℕ} (npos : 0 < n)
+theorem round_sub_le {a n : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
   (hfaithful₀ : faithful₀ n round)
   (hfaithful₁ : faithful₁ n round)
   (b : ℕ) (hfa : trunc n a = a) :
