@@ -15,7 +15,7 @@ theorem round_eq_next_trunc_of_gt {n x : ℕ} {round : ℕ → ℕ}
   cases hfaithful₁ x with
   | inl hlo =>
     exfalso
-    apply Nat.lt_le_antisymm h
+    apply Nat.lt_le_asymm h
     exact hlo ▸ (trunc_le n x)
   | inr hhi => exact hhi
 
@@ -60,7 +60,7 @@ theorem round_eq_trunc_of_le {n x : ℕ} (npos : 0 < n) {round : ℕ → ℕ}
   | inl hlo => exact hlo
   | inr hhi =>
     exfalso
-    apply Nat.lt_le_antisymm (lt_next_trunc npos x)
+    apply Nat.lt_le_asymm (lt_next_trunc npos x)
     exact hhi ▸ h
 
 theorem le_midpoint_of_round_eq_trunc
@@ -108,7 +108,7 @@ theorem round_eq_trunc_of_lt_midpoint {n x : ℕ} (npos : 0 < n) {round : ℕ �
       exact Nat.mul_lt_mul_of_pos_right h two_pos
     cases hfaithful₁ x with
     | inl lo => exact lo
-    | inr hi => exfalso ; exact Nat.lt_le_antisymm h $ hcorrect₁ x hi
+    | inr hi => exfalso ; exact Nat.lt_le_asymm h $ hcorrect₁ x hi
 
 theorem midpoint_le_of_round_eq_next_trunc
   {n x : ℕ} {round : ℕ → ℕ} (npos : 0 < n)
@@ -194,7 +194,7 @@ theorem round_le_round {n a b : ℕ} {round : ℕ → ℕ}
         . exact lolo
       have ulp_eq : ulp n a = ulp n b := by
         rw [← ulp_trunc npos b, ← ulp_trunc npos a, trunc_eq]
-      apply Nat.lt_le_antisymm (lt_of_le_of_ne hba ne)
+      apply Nat.lt_le_asymm (lt_of_le_of_ne hba ne)
       trans trunc n a + ulp n a / 2
       . exact le_midpoint_of_round_eq_trunc npos hcorrect₀ alo
       . rewrite [trunc_eq, ulp_eq]

@@ -655,7 +655,7 @@ theorem a₁'
           have ulp_le : ulp n (a + b) ≤ b := by
             rewrite [← Nat.not_lt]
             intro lt_ulp
-            apply Nat.lt_le_antisymm lt_round
+            apply Nat.lt_le_asymm lt_round
             exact round_le_of_no_uflow_of_carry_of_lt_ulp
               npos hfaithful₀ hfaithful₁ hcorrect₁ hfa hba no_uflow carry lt_ulp
           exact a₁_hi_of_ulp_le_of_lt_round npos hfaithful₁ hfa hfb hba ulp_le lt_round
@@ -1008,7 +1008,7 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le
     apply Nat.le_antisymm
     . rewrite [← Nat.not_lt]
       intro (size_lt : 2 ^ (Nat.size a - 1) < a)
-      apply Nat.lt_le_antisymm ulp_lt_ulp
+      apply Nat.lt_le_asymm ulp_lt_ulp
       apply ulp_le_ulp_of_le_ulp_of_size_lt npos hfa lt_ulp.le size_lt
     . apply le_size_of_pos
       apply Nat.zero_lt_of_lt
@@ -1108,7 +1108,7 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt_of_pos_of_le
       rewrite [tsub_le_iff_left]
       apply le_midpoint_of_round_eq_trunc npos hcorrect₀
       exact round_eq_trunc_of_le npos hfaithful₁ round_lt.le
-    exact Nat.lt_le_antisymm k₂ k₃
+    exact Nat.lt_le_asymm k₂ k₃
   rewrite [← Nat.mul_div_cancel_left' ulp_even]
   apply Nat.mul_le_mul_left
   exact h₃

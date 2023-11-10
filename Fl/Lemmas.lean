@@ -125,7 +125,7 @@ theorem lt_of_size_lt_size {x y : ℕ} (h : Nat.size x < Nat.size y)
   apply Nat.lt_of_not_le
   intro (hle : y ≤ x)
   -- ⊢ False
-  apply Nat.lt_le_antisymm h
+  apply Nat.lt_le_asymm h
   apply Nat.size_le_size
   exact hle
 
