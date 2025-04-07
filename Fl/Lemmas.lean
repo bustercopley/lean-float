@@ -1,13 +1,14 @@
 import Mathlib.Algebra.Divisibility.Basic
 import Mathlib.Data.Nat.Size
 import Mathlib.Algebra.Order.Ring.Nat
+import Mathlib.Algebra.Order.Sub.Basic
 
 theorem sub_div_of_pos_of_dvd {x d : ℕ} (hpos : 0 < d) (hdvd : d ∣ x) :
     x - x / d = (d - 1) * x / d := by
   have hdvd' : d ∣ (d - 1) * x := Nat.dvd_trans hdvd (Nat.dvd_mul_left _ _)
   apply Nat.eq_of_mul_eq_mul_right hpos
   rw [Nat.mul_sub_right_distrib, Nat.div_mul_cancel hdvd,
-    Nat.div_mul_cancel hdvd', Nat.sub_one, Nat.mul_pred_left, Nat.mul_comm]
+    Nat.div_mul_cancel hdvd', Nat.sub_one, Nat.pred_mul, Nat.mul_comm]
 
 theorem sub_half_of_even {x : ℕ} (hdvd : 2 ∣ x) : x - x / 2 = x / 2 := by
   suffices x - x / 2 = (2 - 1) * x / 2 by
@@ -56,9 +57,9 @@ theorem pred_div_mul_eq_sub_of_pos_of_dvd {a b : ℕ} (h₁ : 0 < a) (h₂ : 0 <
     . apply Nat.lt_of_le_of_lt (m := b - 1)
       . exact Nat.div_mul_le_self _ _
       . exact tsub_lt_self h₂ zero_lt_one
-  . rewrite [tsub_le_iff_right, ← Nat.succ_mul, ← Nat.add_div_right _ h₁,
-      tsub_add_eq_add_tsub (Nat.one_le_of_lt h₂),
-      add_tsub_assoc_of_le (Nat.one_le_of_lt h₁)]
+  . rewrite [tsub_le_iff_right, ← Nat.add_one_mul, ← Nat.add_div_right _ h₁,
+       tsub_add_eq_add_tsub (Nat.one_le_of_lt h₂),
+       add_tsub_assoc_of_le (Nat.one_le_of_lt h₁)]
     trans b / a * a
     . rw [Nat.div_mul_cancel h₃]
     . apply Nat.mul_le_mul_right
@@ -126,7 +127,7 @@ theorem size_div_mul {x m : ℕ} (h : 2 ^ m ≤ x) :
   apply Nat.le_of_pred_lt
   rewrite [Nat.lt_size]
   calc 2 ^ Nat.pred m
-    _ ≤ 2 ^ m := Nat.pow_le_pow_of_le_right two_pos (Nat.pred_le m)
+    _ ≤ 2 ^ m := Nat.pow_le_pow_right two_pos (Nat.pred_le m)
     _ ≤ x     := h
 
 theorem mod_eq_sub_div_mul {m k : ℕ} : m % k = m - m / k * k :=

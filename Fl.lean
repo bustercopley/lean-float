@@ -51,7 +51,7 @@ theorem sterbenz {n a b : ℕ} (hfa : trunc n a = a) (hfb : trunc n b = b)
   rewrite [Nat.two_mul] at hab
   apply trunc_eq_of_le_of_ulp_dvd b
   . exact tsub_le_iff_right.mpr hab
-  . apply Nat.dvd_sub'
+  . apply Nat.dvd_sub
     . trans ulp n a
       . exact ulp_dvd_ulp n hba
       . exact ulp_dvd_of_trunc_eq hfa
@@ -99,7 +99,7 @@ theorem s₁' {n a b x : ℕ} (npos : 0 < n) (hfb : trunc n b = b)
         Nat.zero_lt_of_lt <| Nat.lt_pred_iff.mp <| Nat.sub_succ _ _ ▸ h
       rewrite [trunc_pred_eq_sub_ulp_of_pos_of_trunc_eq bpos hfb₁,
         tsub_right_comm, trunc_eq_iff_ulp_dvd]
-      apply Nat.dvd_sub'
+      apply Nat.dvd_sub
       . trans ulp n (b - w - a)
         . apply ulp_dvd_ulp
           exact tsub_le_self
@@ -378,7 +378,7 @@ theorem a₁_hi_of_lt_round_of_ulp_sub_le {round : ℕ → ℕ} {n a b : ℕ}
   apply trunc_eq_of_le_of_ulp_dvd b
   . rewrite [next_trunc_sub_eq_ulp_sub_mod npos]
     exact ulp_sub_le
-  . apply Nat.dvd_sub'
+  . apply Nat.dvd_sub
     . rewrite [next, ulp_trunc npos]
       apply Nat.dvd_add
       . trans ulp n (a + b)
@@ -483,7 +483,7 @@ theorem a₁_lo_of_no_uflow_of_carry_of_round_le {round : ℕ → ℕ} {n a b : 
     apply Nat.le_of_add_le_add_left (a := a)
     have ulp_le_pow : ulp n a ≤ 2 ^ Nat.size a := by
       unfold ulp expt
-      exact Nat.pow_le_pow_of_le_right two_pos tsub_le_self
+      exact Nat.pow_le_pow_right two_pos tsub_le_self
     trans 2 ^ Nat.size a
     . apply add_le_of_le_tsub_right_of_le ulp_le_pow
       exact le_size_sub_ulp_of_trunc_eq npos hfa
@@ -506,7 +506,7 @@ theorem a₁_lo_of_no_uflow_of_carry_of_round_le {round : ℕ → ℕ} {n a b : 
         exact Nat.dvd_mul_left _ _
       . exact h₁
       . exact Nat.mod_lt _ (ulp_pos n _)
-    . rewrite [ulp_add_eq_two_mul_ulp, ← Nat.mul_pred_left,
+    . rewrite [ulp_add_eq_two_mul_ulp, ← Nat.pred_mul,
         ← one_add_one_eq_two, Nat.add_one, Nat.pred_succ]
       apply Nat.mul_le_mul_right
       rewrite [Nat.one_le_div_iff (ulp_pos n _)]
@@ -534,7 +534,7 @@ theorem round_le_of_no_uflow_of_carry_of_lt_ulp {round : ℕ → ℕ} {n a b : �
   have add_lt_pow_add_ulp : a + b < 2 ^ Nat.size a + ulp n a := by
     have ulp_le : ulp n a ≤ 2 ^ Nat.size a := by
       unfold ulp expt
-      exact Nat.pow_le_pow_of_le_right two_pos tsub_le_self
+      exact Nat.pow_le_pow_right two_pos tsub_le_self
     rewrite [← tsub_add_cancel_of_le ulp_le, Nat.add_assoc, ← Nat.two_mul,
       ← ulp_eq]
     apply add_lt_add_of_le_of_lt
@@ -555,7 +555,7 @@ theorem round_le_of_no_uflow_of_carry_of_lt_ulp {round : ℕ → ℕ} {n a b : �
     unfold trunc
     rewrite [ulp_eq, ← Nat.mul_assoc, Nat.mul_comm 2, ← Nat.div_div_eq_div_mul,
       div_ulp_eq_pow,
-      Nat.div_mul_cancel <| dvd_pow_self _ (Nat.not_eq_zero_of_lt npos)]
+      Nat.div_mul_cancel <| dvd_pow_self _ (Nat.ne_zero_of_lt npos)]
     exact pow_size_eq_pow_mul_ulp.symm
   have lt_midpoint : a + b < trunc n (a + b) + ulp n (a + b) / 2 := by
     rewrite [eq_pow]
@@ -712,14 +712,14 @@ theorem b₁_hi_of_two_mul_le_of_lt_round {round : ℕ → ℕ} {n a b : ℕ}
   apply trunc_eq_of_le_of_ulp_dvd b
   . rewrite [next_trunc_sub_eq_ulp_sub_mod npos]
     exact ulp_sub_le
-  . apply Nat.dvd_sub'
+  . apply Nat.dvd_sub
     . rewrite [next, ulp_trunc npos]
       apply Nat.dvd_add
       . trans ulp n (a - b)
         . exact ulp_dvd
         . exact ulp_dvd_trunc n _
       . exact ulp_dvd
-    . apply Nat.dvd_sub hba'
+    . apply Nat.dvd_sub
       . trans ulp n a
         . exact ulp_dvd_ulp n hba'
         . exact ulp_dvd_of_trunc_eq hfa
@@ -745,7 +745,7 @@ theorem b₁_lo_of_round_le_of_two_mul_le_of_ulp_le {round : ℕ → ℕ} {n a b
     . exact Nat.le_of_lt <| Nat.mod_lt _ (ulp_pos _ _)
     . exact ulp_le
   . rewrite [Nat.dvd_mod_iff (ulp_dvd_ulp n hab)]
-    apply Nat.dvd_sub hba
+    apply Nat.dvd_sub
     . trans ulp n a
       . exact ulp_dvd_ulp n hba
       . exact ulp_dvd_of_trunc_eq hfa
@@ -837,7 +837,7 @@ theorem ulp_le_ulp_of_le_ulp_of_size_lt {n a b : ℕ} (npos : 0 < n)
     (size_lt : 2 ^ (Nat.size a - 1) < a) :
     ulp n a ≤ ulp n (a - b) := by
   unfold ulp expt
-  apply Nat.pow_le_pow_of_le_right two_pos
+  apply Nat.pow_le_pow_right two_pos
   apply tsub_le_tsub_right
   apply Nat.le_of_pred_lt
   rewrite [← Nat.sub_one, Nat.lt_size]
@@ -888,11 +888,11 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt
       . exact tsub_lt_self apos bpos
   have even : 2 ∣ 2 ^ (Nat.size a - 1) := by
     apply dvd_pow_self 2
-    apply Nat.not_eq_zero_of_lt
+    apply Nat.ne_zero_of_lt
     exact size_sub_one_pos
   have ulp_eq_half_ulp : ulp n (a - b) = ulp n a / 2 := by
     have size_lt_size : Nat.size (a - b) < Nat.size a := by
-      rewrite [← Nat.succ_pred (Nat.not_eq_zero_of_lt lt_size), Nat.lt_succ,
+      rewrite [← Nat.succ_pred (Nat.ne_zero_of_lt lt_size), Nat.lt_succ,
       ← Nat.sub_one, Nat.size_le, ← eq_pow]
       exact tsub_lt_self apos bpos
     have pow_lt : 2 ^ (Nat.size a - 1) / 2 < a - b := by
@@ -910,7 +910,7 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt
           ← Nat.pow_div (Nat.one_le_of_lt size_sub_one_pos) two_pos, pow_one]
         exact pow_lt.le
     have size_add_one_eq_size : Nat.size (a - b) + 1 = Nat.size a := by
-      rewrite [← Nat.succ_pred (Nat.not_eq_zero_of_lt size_pos),
+      rewrite [← Nat.succ_pred (Nat.ne_zero_of_lt size_pos),
         ← Nat.sub_one, ← Nat.add_one]
       apply congr_arg (fun w => w + 1)
       exact size_eq_size_sub_one
@@ -942,7 +942,7 @@ theorem b₁_lo_of_round_lt_of_no_uflow_of_ulp_lt_ulp_of_two_mul_lt
         ← pow_add, tsub_right_comm, add_tsub_cancel_of_le le_size_sub_one]
       exact eq_pow
     have k₂ : a - b = (2 ^ n - 1) * ulp n (a - b) + (ulp n (a - b) - b) := by
-      rw [Nat.sub_one, Nat.mul_pred_left, ← add_tsub_assoc_of_le le_ulp,
+      rw [Nat.sub_one, Nat.pred_mul, ← add_tsub_assoc_of_le le_ulp,
         tsub_add_cancel_of_le (Nat.le_mul_of_pos_left _ (Nat.two_pow_pos _)),
         ← k₁]
     have k₃ : trunc n (a - b) = (2 ^ n - 1) * ulp n (a - b) := by

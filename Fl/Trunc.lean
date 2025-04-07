@@ -12,7 +12,7 @@ theorem ulp_pos (n x : ℕ) : 0 < ulp n x :=
   Nat.two_pow_pos _
 
 theorem ulp_le_ulp (n : ℕ) {x y : ℕ} (h : x ≤ y) : ulp n x ≤ ulp n y :=
-  Nat.pow_le_pow_of_le_right two_pos (expt_le_expt n h)
+  Nat.pow_le_pow_right two_pos (expt_le_expt n h)
 
 theorem trunc_le (n x : ℕ) : trunc n x ≤ x :=
   Nat.div_mul_le_self _ _
@@ -87,7 +87,7 @@ theorem trunc_eq_sub_mod (n x : ℕ) : trunc n x = x - x % (ulp n x) := by
 theorem ulp_le_self {n x : ℕ} (npos : 0 < n) (xpos : 0 < x) : ulp n x ≤ x := by
   unfold ulp expt
   trans 2 ^ (Nat.size x - 1)
-  . apply Nat.pow_le_pow_of_le_right two_pos
+  . apply Nat.pow_le_pow_right two_pos
     exact tsub_le_tsub_left (Nat.one_le_of_lt npos) _
   . exact le_size_of_pos xpos
 
@@ -130,7 +130,7 @@ theorem trunc_trunc_sub_ulp_eq {n x : ℕ} (npos : 0 < n) :
   apply trunc_eq_of_le_of_ulp_dvd
   . exact tsub_le_self
   . rewrite [ulp_trunc npos]
-    apply Nat.dvd_sub'
+    apply Nat.dvd_sub
     . exact ulp_dvd_trunc n _
     . exact Nat.dvd_refl _
 
@@ -228,7 +228,7 @@ theorem size_next_le_succ_size (n x : ℕ) :
   rewrite [Nat.add_comm, ← Nat.add_one_le_iff, add_rotate]
   apply Nat.add_le_add
   . exact Nat.lt_size_self x
-  . exact Nat.pow_le_pow_of_le_right two_pos tsub_le_self
+  . exact Nat.pow_le_pow_right two_pos tsub_le_self
 
 theorem size_next_eq_size_of_no_carry {n x : ℕ}
     (no_carry : next n x < 2 ^ Nat.size x) :
@@ -280,7 +280,7 @@ theorem next_trunc_of_carry {n x : ℕ} (npos : 0 < n)
   unfold next
   rewrite [ulp_trunc npos]
   unfold trunc ulp
-  rewrite [← Nat.succ_mul, ← Nat.add_div_right x (Nat.two_pow_pos _)]
+  rewrite [← Nat.add_one_mul, ← Nat.add_div_right x (Nat.two_pow_pos _)]
   have h₁ : expt n x ≤ Nat.size x := tsub_le_self
   have h₃ : next n x < 2 ^ Nat.size x + 2 ^ expt n x :=
     Nat.add_lt_add_right (Nat.lt_size_self x) _
@@ -323,7 +323,7 @@ theorem trunc_eq_trunc_of_le_of_lt {x y n : ℕ} (npos : 0 < n)
       exact h
     . rewrite [ulp_trunc npos]
       unfold ulp expt
-      apply Nat.pow_le_pow_of_le_right two_pos
+      apply Nat.pow_le_pow_right two_pos
       apply tsub_le_tsub_right
       rewrite [Nat.size_le]
       apply Nat.lt_of_lt_of_le k
